@@ -1,0 +1,1 @@
+export const ExchangeExtractor = "0xf8128e94E5f59Cd5cE30284f227Bbe41b28A891E";

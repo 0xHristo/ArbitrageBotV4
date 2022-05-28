@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "hardhat/console.sol";
 
 /**
  * @dev Collection of functions related to the address type
@@ -51,16 +52,10 @@ library Address {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     /**
@@ -81,10 +76,7 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-    {
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
         return functionCall(target, data, "Address: low-level call failed");
     }
 
@@ -118,13 +110,7 @@ library Address {
         bytes memory data,
         uint256 value
     ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                target,
-                data,
-                value,
-                "Address: low-level call with value failed"
-            );
+        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
     }
 
     /**
@@ -139,15 +125,10 @@ library Address {
         uint256 value,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(
-            address(this).balance >= value,
-            "Address: insufficient balance for call"
-        );
+        require(address(this).balance >= value, "Address: insufficient balance for call");
         require(isContract(target), "Address: call to non-contract");
 
-        (bool success, bytes memory returndata) = target.call{value: value}(
-            data
-        );
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return verifyCallResult(success, returndata, errorMessage);
     }
 
@@ -157,17 +138,8 @@ library Address {
      *
      * _Available since v3.3._
      */
-    function functionStaticCall(address target, bytes memory data)
-        internal
-        view
-        returns (bytes memory)
-    {
-        return
-            functionStaticCall(
-                target,
-                data,
-                "Address: low-level static call failed"
-            );
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
     }
 
     /**
@@ -193,16 +165,8 @@ library Address {
      *
      * _Available since v3.4._
      */
-    function functionDelegateCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-    {
-        return
-            functionDelegateCall(
-                target,
-                data,
-                "Address: low-level delegate call failed"
-            );
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
     }
 
     /**
@@ -259,10 +223,7 @@ library SafeERC20 {
         address to,
         uint256 value
     ) internal {
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transfer.selector, to, value)
-        );
+        _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
     }
 
     function safeTransferFrom(
@@ -271,10 +232,7 @@ library SafeERC20 {
         address to,
         uint256 value
     ) internal {
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transferFrom.selector, from, to, value)
-        );
+        _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
     }
 
     /**
@@ -296,10 +254,7 @@ library SafeERC20 {
             (value == 0) || (token.allowance(address(this), spender) == 0),
             "SafeERC20: approve from non-zero to non-zero allowance"
         );
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.approve.selector, spender, value)
-        );
+        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, value));
     }
 
     function safeIncreaseAllowance(
@@ -308,14 +263,7 @@ library SafeERC20 {
         uint256 value
     ) internal {
         uint256 newAllowance = token.allowance(address(this), spender) + value;
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(
-                token.approve.selector,
-                spender,
-                newAllowance
-            )
-        );
+        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
     }
 
     function safeDecreaseAllowance(
@@ -325,19 +273,9 @@ library SafeERC20 {
     ) internal {
         unchecked {
             uint256 oldAllowance = token.allowance(address(this), spender);
-            require(
-                oldAllowance >= value,
-                "SafeERC20: decreased allowance below zero"
-            );
+            require(oldAllowance >= value, "SafeERC20: decreased allowance below zero");
             uint256 newAllowance = oldAllowance - value;
-            _callOptionalReturn(
-                token,
-                abi.encodeWithSelector(
-                    token.approve.selector,
-                    spender,
-                    newAllowance
-                )
-            );
+            _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
         }
     }
 
@@ -352,44 +290,28 @@ library SafeERC20 {
         // we're implementing it ourselves. We use {Address.functionCall} to perform this call, which verifies that
         // the target address contains contract code and also asserts for success in the low-level call.
 
-        bytes memory returndata = address(token).functionCall(
-            data,
-            "SafeERC20: low-level call failed"
-        );
+        bytes memory returndata = address(token).functionCall(data, "SafeERC20: low-level call failed");
         if (returndata.length > 0) {
             // Return data is optional
-            require(
-                abi.decode(returndata, (bool)),
-                "SafeERC20: ERC20 operation did not succeed"
-            );
+            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
         }
     }
 }
 
 interface IUniswapV2Factory {
-    event PairCreated(
-        address indexed token0,
-        address indexed token1,
-        address pair,
-        uint256
-    );
+    event PairCreated(address indexed token0, address indexed token1, address pair, uint256);
 
     function feeTo() external view returns (address);
 
     function feeToSetter() external view returns (address);
 
-    function getPair(address tokenA, address tokenB)
-        external
-        view
-        returns (address pair);
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
 
     function allPairs(uint256) external view returns (address pair);
 
     function allPairsLength() external view returns (uint256);
 
-    function createPair(address tokenA, address tokenB)
-        external
-        returns (address pair);
+    function createPair(address tokenA, address tokenB) external returns (address pair);
 
     function setFeeTo(address) external;
 
@@ -397,11 +319,7 @@ interface IUniswapV2Factory {
 }
 
 interface IUniswapV2Pair {
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     function name() external pure returns (string memory);
@@ -414,10 +332,7 @@ interface IUniswapV2Pair {
 
     function balanceOf(address owner) external view returns (uint256);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function approve(address spender, uint256 value) external returns (bool);
 
@@ -446,12 +361,7 @@ interface IUniswapV2Pair {
     ) external;
 
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
-    event Burn(
-        address indexed sender,
-        uint256 amount0,
-        uint256 amount1,
-        address indexed to
-    );
+    event Burn(address indexed sender, uint256 amount0, uint256 amount1, address indexed to);
     event Swap(
         address indexed sender,
         uint256 amount0In,
@@ -487,9 +397,7 @@ interface IUniswapV2Pair {
 
     function mint(address to) external returns (uint256 liquidity);
 
-    function burn(address to)
-        external
-        returns (uint256 amount0, uint256 amount1);
+    function burn(address to) external returns (uint256 amount0, uint256 amount1);
 
     function swap(
         uint256 amount0Out,
@@ -653,15 +561,9 @@ interface IUniswapV2Router01 {
         uint256 reserveOut
     ) external pure returns (uint256 amountIn);
 
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
+    function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts);
 
-    function getAmountsIn(uint256 amountOut, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
+    function getAmountsIn(uint256 amountOut, address[] calldata path) external view returns (uint256[] memory amounts);
 }
 
 interface IUniswapV2Router02 is IUniswapV2Router01 {
@@ -712,11 +614,7 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
 }
 
 interface IERC20 {
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     function name() external view returns (string memory);
@@ -729,10 +627,7 @@ interface IERC20 {
 
     function balanceOf(address owner) external view returns (uint256);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function approve(address spender, uint256 value) external returns (bool);
 
@@ -773,10 +668,7 @@ contract ExchangeExtractorV4 {
         uint256[2][] memory pairs_reserves = new uint256[2][](_qty);
 
         for (uint256 i = 0; i < _qty; i++) {
-            (pairs_tokens[i], pairs_digits[i], pairs_reserves[i]) = extractPair(
-                factory,
-                _start + i
-            );
+            (pairs_tokens[i], pairs_digits[i], pairs_reserves[i]) = extractPair(factory, _start + i);
         }
 
         return (pairs_tokens, pairs_digits, pairs_reserves);
@@ -794,24 +686,15 @@ contract ExchangeExtractorV4 {
         IUniswapV2Pair pair = IUniswapV2Pair(factory.allPairs(index));
         IERC20 token0 = IERC20(pair.token0());
         IERC20 token1 = IERC20(pair.token1());
-        address[3] memory pair_tokens = [
-            address(token0),
-            address(token1),
-            address(pair)
-        ];
-        uint8[2] memory pair_digits = [
-            getDecimals(token0),
-            getDecimals(token1)
-        ];
+        address[3] memory pair_tokens = [address(token0), address(token1), address(pair)];
+        uint8[2] memory pair_digits = [getDecimals(token0), getDecimals(token1)];
         uint256[2] memory pair_reserves;
         (pair_reserves[0], pair_reserves[1], ) = pair.getReserves();
         return (pair_tokens, pair_digits, pair_reserves);
     }
 
     function getDecimals(IERC20 token) private view returns (uint8) {
-        (bool success, bytes memory res) = address(token).staticcall(
-            abi.encodeWithSignature("decimals()")
-        );
+        (bool success, bytes memory res) = address(token).staticcall(abi.encodeWithSignature("decimals()"));
         if (success) {
             uint8 decimals;
             assembly {
@@ -832,11 +715,7 @@ contract ExchangeExtractorV4 {
         uint256[] memory amounts;
         for (uint256 i = 0; i < routers.length; i++) {
             (bool success, bytes memory res) = routers[i].staticcall(
-                abi.encodeWithSignature(
-                    "getAmountsOut(uint256,address[])",
-                    currentAmountIn,
-                    paths[i]
-                )
+                abi.encodeWithSignature("getAmountsOut(uint256,address[])", currentAmountIn, paths[i])
             );
 
             if (!success) {
@@ -866,23 +745,46 @@ contract ExchangeExtractorV4 {
         address[][] calldata paths,
         uint256 amountIn,
         uint256 deadline
-    ) external returns (bool) {
+    ) public returns (bool) {
         IERC20(paths[0][0]).safeTransferFrom(msg.sender, address(this), amountIn);
         uint256 currentAmountIn = amountIn;
         uint256[] memory amounts;
         for (uint256 i = 0; i < routers.length; i++) {
             IERC20(paths[i][0]).safeApprove(address(routers[i]), currentAmountIn);
-            amounts = routers[i].swapExactTokensForTokens(
-                currentAmountIn,
-                0,
-                paths[i],
-                address(this),
-                deadline
-            );
+            amounts = routers[i].swapExactTokensForTokens(currentAmountIn, 0, paths[i], address(this), deadline);
             currentAmountIn = amounts[paths[i].length - 1];
         }
+        console.log(amountIn, currentAmountIn);
         require(currentAmountIn > amountIn, "Unprofitable arbitrage");
         IERC20(paths[0][0]).safeTransfer(msg.sender, currentAmountIn - 1);
+        return true;
+    }
+
+    function arbitrages(
+        IUniswapV2Router02[][] calldata routers,
+        address[][][] calldata paths,
+        uint256 amountIn,
+        uint256 deadline
+    ) external returns (bool) {
+        IERC20(paths[0][0][0]).safeTransferFrom(msg.sender, address(this), amountIn);
+        uint256 currentAmountIn = amountIn;
+        uint256[] memory amounts;
+        for (uint256 i = 0; i < routers.length; i++) {
+            for (uint256 j = 0; j < routers[i].length; j++) {
+                IERC20(paths[i][j][0]).safeApprove(address(routers[i][j]), currentAmountIn);
+                amounts = routers[i][j].swapExactTokensForTokens(
+                    currentAmountIn,
+                    0,
+                    paths[i][j],
+                    address(this),
+                    deadline
+                );
+                currentAmountIn = amounts[paths[i][j].length - 1];
+            }
+            console.log(amountIn, currentAmountIn);
+            require(currentAmountIn > amountIn, "Unprofitable arbitrage");
+        }
+        IERC20(paths[0][0][0]).safeTransfer(msg.sender, currentAmountIn - 1);
         return true;
     }
 }

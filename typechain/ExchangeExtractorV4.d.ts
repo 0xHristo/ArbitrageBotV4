@@ -22,6 +22,7 @@ import type { TypedEventFilter, TypedEvent, TypedListener } from "./common";
 interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
   functions: {
     "arbitrage(address[],address[][],uint256,uint256)": FunctionFragment;
+    "arbitrages(address[][],address[][][],uint256,uint256)": FunctionFragment;
     "estimateSwap(address[],address[][],uint256)": FunctionFragment;
     "estimateSwaps(address[][],address[][][],uint256[])": FunctionFragment;
     "extract(address,uint256,uint256)": FunctionFragment;
@@ -30,6 +31,10 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
   encodeFunctionData(
     functionFragment: "arbitrage",
     values: [string[], string[][], BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "arbitrages",
+    values: [string[][], string[][][], BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "estimateSwap",
@@ -45,6 +50,7 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
   ): string;
 
   decodeFunctionResult(functionFragment: "arbitrage", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "arbitrages", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "estimateSwap",
     data: BytesLike
@@ -110,6 +116,14 @@ export class ExchangeExtractorV4 extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    arbitrages(
+      routers: string[][],
+      paths: string[][][],
+      amountIn: BigNumberish,
+      deadline: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     estimateSwap(
       routers: string[],
       paths: string[][],
@@ -142,6 +156,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  arbitrages(
+    routers: string[][],
+    paths: string[][][],
+    amountIn: BigNumberish,
+    deadline: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   estimateSwap(
     routers: string[],
     paths: string[][],
@@ -169,6 +191,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     arbitrage(
       routers: string[],
       paths: string[][],
+      amountIn: BigNumberish,
+      deadline: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    arbitrages(
+      routers: string[][],
+      paths: string[][][],
       amountIn: BigNumberish,
       deadline: BigNumberish,
       overrides?: CallOverrides
@@ -209,6 +239,14 @@ export class ExchangeExtractorV4 extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    arbitrages(
+      routers: string[][],
+      paths: string[][][],
+      amountIn: BigNumberish,
+      deadline: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     estimateSwap(
       routers: string[],
       paths: string[][],
@@ -235,6 +273,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     arbitrage(
       routers: string[],
       paths: string[][],
+      amountIn: BigNumberish,
+      deadline: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    arbitrages(
+      routers: string[][],
+      paths: string[][][],
       amountIn: BigNumberish,
       deadline: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }

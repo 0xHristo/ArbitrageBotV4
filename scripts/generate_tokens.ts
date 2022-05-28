@@ -11,7 +11,7 @@ const main = async () => {
     const quickswap = Dexes['quickswap']
 
     try {
-        const [pairInfo] = await exchangeExtractor.callStatic.extract(quickswap, 1750, 2000);
+        const [pairInfo] = await exchangeExtractor.callStatic.extract(quickswap, 34307 - 900, 34307);
        
         const pairs = pairInfo.map(singlePairInfo => [singlePairInfo[0], singlePairInfo[1]]);
 

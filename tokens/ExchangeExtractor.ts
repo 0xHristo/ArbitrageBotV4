@@ -1,1 +1,1 @@
-export const ExchangeExtractor = "0xf8128e94E5f59Cd5cE30284f227Bbe41b28A891E";
+export const ExchangeExtractor = "0xD63177C4524d5771bE7107587e32DCeeE3d9800B";

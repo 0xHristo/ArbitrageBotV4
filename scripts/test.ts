@@ -8,23 +8,23 @@ import { BigNumber } from "ethers"
 
 const entry = {
     baseA: {
-        symbol: 'WMATIC',
-        address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
-        digits: 18
+      symbol: 'WMATIC',
+      address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+      digits: 18
     },
     baseB: {
-        symbol: 'WETH',
-        address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
-        digits: 18
+      symbol: 'WETH',
+      address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+      digits: 18
     },
-    token: '0x05089C9EBFFa4F0AcA269e32056b1b36B37ED71b',
+    token: '0xAa9654BECca45B5BDFA5ac646c939C62b527D394',
     dexes: [
-        '0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff',
-        '0x1b02da8cb0d097eb8d57a175b88c7d8b47997506'
+      '0x1b02da8cb0d097eb8d57a175b88c7d8b47997506',
+      '0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff'
     ],
-    amountIn: "100000",
-    amountOut: "166727"
-}
+    amountIn: BigNumber.from("10000000000000000"),
+    amountOut: BigNumber.from("10177149966809145")
+  }
 
 const main = async () => {
     try {

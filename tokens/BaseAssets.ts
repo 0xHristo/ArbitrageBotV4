@@ -1,5 +1,10 @@
 
 export const BaseAssets = {
+    "WMATIC": {
+        symbol: "WMATIC",
+        address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        digits: 18
+    },
     "USDC": {
         symbol: "USDC",
         address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
@@ -15,9 +20,5 @@ export const BaseAssets = {
         address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
         digits: 18
     },
-    "WMATIC": {
-        symbol: "WMATIC",
-        address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-        digits: 18
-    },
+   
 }

@@ -28,7 +28,7 @@ export type PairInfoObject = {
     reserve1: BigNumber,
     reserve2: BigNumber,
     dex: Dex,
-    address: String
+    address: string
 }
 
 export class PairInfo {
@@ -39,7 +39,7 @@ export class PairInfo {
     readonly dex: Dex
     readonly priceToken1: BigNumber
     readonly priceToken2: BigNumber
-    readonly address: String
+    readonly address: string
     readonly k: BigNumber
 
     constructor(pairInfo: PairInfoObject) {
@@ -59,7 +59,29 @@ export class PairInfo {
         this.k = this.reserve1.mul(this.reserve2)
     }
 
+    static nameFor(token1: Token, token2: Token): string {
+        return token1.address > token2.address ?
+            `${token1.address}-${token2.address}` :
+            `${token2.address}-${token1.address}`
+    }
+
     get name(): string {
-        return `${this.token1.address}-${this.token2.address}`
+        return PairInfo.nameFor(this.token1, this.token2)
+    }
+
+    this(address: string): Token {
+        return this.token1.address == address ? this.token1 : this.token2
+    }
+
+    other(address: string): Token {
+        return this.token1.address == address ? this.token2 : this.token1
+    }
+
+    reserve(_of: string): BigNumber {
+        return _of == this.token1.address ? this.reserve1 : this.reserve2
+    }
+
+    price(_of: string): BigNumber {
+        return _of == this.token1.address ? this.priceToken1 : this.priceToken2
     }
 }

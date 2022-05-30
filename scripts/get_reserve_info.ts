@@ -7,6 +7,9 @@ import fs from "fs"
 import { Dex, PairInfo, Token } from "./models/pairInfo"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { Arbitrage, Market } from "./models/marketInfo"
+import { NetworkInfo } from "./models/networkInfo"
+import { BigNumber } from "ethers"
+import { CycleBatch } from "./models/cycleBatch"
 
 type GetPairInfoForDex = (dex: Dex, start: number, end: number) => Promise<PairInfo[]>
 
@@ -70,24 +73,55 @@ const main = async () => {
         return [...arrayOfPairs, ...singleArrayOfPairs]
     })
 
-    const filteredPairs = arrayOfPairs.filter(pair => {
+    const filteredPairs = arrayOfPairs/* .filter(pair => {
         if (pair.token2.address == "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270" &&
             pair.token1.address == "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619") return true
         return false
-    })
-    console.log(filteredPairs)
+    }) */
+    // console.log(filteredPairs)
 
-    const market = new Market(filteredPairs[0].name)
-    market.push(filteredPairs[1])
-    market.push(filteredPairs[0])
+    const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
+    const network = new NetworkInfo(wmaticToken, filteredPairs)
+    const cycles = network.createCycles()
 
-    const arbitrage: Arbitrage | undefined = market.crossPairs()
-    console.log(arbitrage!.amountIn)
-    console.log(await exchangeExtractor.estimateSwap(
-        arbitrage!.dexes,
-        arbitrage!.paths,
-        arbitrage!.amountIn
-    ))
+    const step = 3
+    let cycleBatches: Promise<{ dexes: string[][], paths: string[][][], amountIns: BigNumber[] }>[] = []
+    console.log(1)
+    for (let i = 0; i < Math.ceil(Math.min(cycles.length, 10000) / step); i++) {
+        let inputDexes: string[][] = []
+        let inputPaths: string[][][] = []
+        let inputAmountIn: BigNumber[] = []
+        for (let j = step * i; j < step * (i + 1); j++) {
+            const cycle = cycles[j]
+            const input = cycle.input
+
+            inputDexes.push(input[0])
+            inputPaths.push(input[1])
+            inputAmountIn.push(BigNumber.from(10).pow(18))
+
+        }
+        const cycle = new CycleBatch(
+            inputDexes,
+            inputPaths,
+            inputAmountIn
+        )
+        cycleBatches.push(
+            cycle.filter(exchangeExtractor)
+        )
+    }
+
+    console.log(2)
+    const r = await Promise.all(cycleBatches)
+    console.log(3)
+    
+    console.log(r.map(a => a.dexes.length))
+
+    // console.log(await exchangeExtractor.estimateSwap(
+    //     cycles[0].input[0],
+    //     cycles[0].input[1],
+    //     BigNumber.from(10).pow(18)
+    // ))
+    // console.log(network)
 }
 
 main()

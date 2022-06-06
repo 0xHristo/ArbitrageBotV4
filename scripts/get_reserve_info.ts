@@ -59,62 +59,57 @@ const main = async () => {
     const [deployer] = await ethers.getSigners()
     const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
 
-    const dexes: Dex[] = [
-        new Dex(Dexes.quickswap, "quickswap", 6000 /* 34407 */),
-        new Dex(Dexes.sushiswap, "sushiswap", 5948)
-    ]
+    deployer.provider?.on("block", async (e) => {
+        console.log(e)
+        const dexes: Dex[] = [
+            new Dex(Dexes.quickswap, "quickswap", 6000 /* 34407 */),
+            new Dex(Dexes.sushiswap, "sushiswap", 5948)
+        ]
 
-    const arrayOfPairsArrays = await Promise.all([
-        ...getAllPairsInDex(dexes[0], getPairsInfoInDex(exchangeExtractor)),
-        ...getAllPairsInDex(dexes[1], getPairsInfoInDex(exchangeExtractor)),
-    ])
+        const arrayOfPairsArrays = await Promise.all([
+            ...getAllPairsInDex(dexes[0], getPairsInfoInDex(exchangeExtractor)),
+            ...getAllPairsInDex(dexes[1], getPairsInfoInDex(exchangeExtractor)),
+        ])
 
-    const arrayOfPairs = arrayOfPairsArrays.reduce((arrayOfPairs, singleArrayOfPairs) => {
-        return [...arrayOfPairs, ...singleArrayOfPairs]
-    })
-    console.log(arrayOfPairs[0])
-
-    const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
-    const network = new NetworkInfo(wmaticToken, arrayOfPairs)
-    const cycles = network.createCycles()
-
-    console.log("----")
-    console.log(cycles.length)
-    console.log(cycles.filter(cycle => !cycle.isValidCycle).length)
-
-    const amountIn = BigNumber.from(10).pow(19)
-
-    console.log(cycles.length)
-    const result = cycles
-        .filter((_, i) => i < 1200)
-        .map(cycle => cycle.amountOut(amountIn))
-        .filter(([_, isProfitable]) => isProfitable)
-        .reduce((prev, [amountOut, , cycle]) => {
-            prev.dexes.push(cycle.input[0])
-            prev.paths.push(cycle.input[1])
-            prev.amountIns.push(amountIn)
-            prev.expected.push(amountOut)
-            return prev
-        }, {
-            dexes: <string[][]>[],
-            paths: <string[][][]>[],
-            amountIns: <BigNumber[]>[],
-            expected: <BigNumber[]>[]
+        const arrayOfPairs = arrayOfPairsArrays.reduce((arrayOfPairs, singleArrayOfPairs) => {
+            return [...arrayOfPairs, ...singleArrayOfPairs]
         })
-    console.log(result)
-    if(result.dexes.length > 0) {
-        const transaction = await exchangeExtractor.arbitrages(result.dexes, result.paths,
-            amountIn,
-            Date.now() + 10000, {
-            gasLimit: 3000000,
-        }
-        )
-        const receipt = await transaction.wait()
-        console.log(receipt.transactionHash)
-    }
 
-    // console.log(await exchangeExtractor.estimateSwaps(result.dexes, result.paths, result.amountIns), result.expected)
-    console.log(amountIn)
+        const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
+        const network = new NetworkInfo(wmaticToken, arrayOfPairs)
+        const cycles = network.createCycles()
+
+        const amountIn = BigNumber.from(10).pow(19)
+
+        console.log(cycles.length)
+        const result = cycles
+            .filter((_, i) => i < 1200)
+            .map(cycle => cycle.amountOut(amountIn))
+            .filter(([_, isProfitable]) => isProfitable)
+            .reduce((prev, [amountOut, , cycle]) => {
+                prev.dexes.push(cycle.input[0])
+                prev.paths.push(cycle.input[1])
+                prev.amountIns.push(amountIn)
+                prev.expected.push(amountOut)
+                return prev
+            }, {
+                dexes: <string[][]>[],
+                paths: <string[][][]>[],
+                amountIns: <BigNumber[]>[],
+                expected: <BigNumber[]>[]
+            })
+        console.log(result)
+        if (result.dexes.length > 0) {
+            const transaction = await exchangeExtractor.arbitrages(result.dexes, result.paths,
+                amountIn,
+                Date.now() + 10000, {
+                gasLimit: 3000000,
+            }
+            )
+            const receipt = await transaction.wait()
+            console.log(receipt.transactionHash)
+        }
+    })
 }
 
 main()

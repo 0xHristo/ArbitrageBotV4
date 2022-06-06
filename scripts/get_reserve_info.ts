@@ -60,7 +60,7 @@ const main = async () => {
     const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
 
     const dexes: Dex[] = [
-        new Dex(Dexes.quickswap, "quickswap", 34407/* 34407 */),
+        new Dex(Dexes.quickswap, "quickswap", 6000 /* 34407 */),
         new Dex(Dexes.sushiswap, "sushiswap", 5948)
     ]
 
@@ -72,56 +72,49 @@ const main = async () => {
     const arrayOfPairs = arrayOfPairsArrays.reduce((arrayOfPairs, singleArrayOfPairs) => {
         return [...arrayOfPairs, ...singleArrayOfPairs]
     })
-
-    const filteredPairs = arrayOfPairs/* .filter(pair => {
-        if (pair.token2.address == "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270" &&
-            pair.token1.address == "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619") return true
-        return false
-    }) */
-    // console.log(filteredPairs)
+    console.log(arrayOfPairs[0])
 
     const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
-    const network = new NetworkInfo(wmaticToken, filteredPairs)
+    const network = new NetworkInfo(wmaticToken, arrayOfPairs)
     const cycles = network.createCycles()
 
-    const step = 3
-    let cycleBatches: Promise<{ dexes: string[][], paths: string[][][], amountIns: BigNumber[] }>[] = []
-    console.log(1)
-    for (let i = 0; i < Math.ceil(Math.min(cycles.length, 10000) / step); i++) {
-        let inputDexes: string[][] = []
-        let inputPaths: string[][][] = []
-        let inputAmountIn: BigNumber[] = []
-        for (let j = step * i; j < step * (i + 1); j++) {
-            const cycle = cycles[j]
-            const input = cycle.input
+    console.log("----")
+    console.log(cycles.length)
+    console.log(cycles.filter(cycle => !cycle.isValidCycle).length)
 
-            inputDexes.push(input[0])
-            inputPaths.push(input[1])
-            inputAmountIn.push(BigNumber.from(10).pow(18))
+    const amountIn = BigNumber.from(10).pow(19)
 
+    console.log(cycles.length)
+    const result = cycles
+        .filter((_, i) => i < 1200)
+        .map(cycle => cycle.amountOut(amountIn))
+        .filter(([_, isProfitable]) => isProfitable)
+        .reduce((prev, [amountOut, , cycle]) => {
+            prev.dexes.push(cycle.input[0])
+            prev.paths.push(cycle.input[1])
+            prev.amountIns.push(amountIn)
+            prev.expected.push(amountOut)
+            return prev
+        }, {
+            dexes: <string[][]>[],
+            paths: <string[][][]>[],
+            amountIns: <BigNumber[]>[],
+            expected: <BigNumber[]>[]
+        })
+    console.log(result)
+    if(result.dexes.length > 0) {
+        const transaction = await exchangeExtractor.arbitrages(result.dexes, result.paths,
+            amountIn,
+            Date.now() + 10000, {
+            gasLimit: 3000000,
         }
-        const cycle = new CycleBatch(
-            inputDexes,
-            inputPaths,
-            inputAmountIn
         )
-        cycleBatches.push(
-            cycle.filter(exchangeExtractor)
-        )
+        const receipt = await transaction.wait()
+        console.log(receipt.transactionHash)
     }
 
-    console.log(2)
-    const r = await Promise.all(cycleBatches)
-    console.log(3)
-    
-    console.log(r.map(a => a.dexes.length))
-
-    // console.log(await exchangeExtractor.estimateSwap(
-    //     cycles[0].input[0],
-    //     cycles[0].input[1],
-    //     BigNumber.from(10).pow(18)
-    // ))
-    // console.log(network)
+    // console.log(await exchangeExtractor.estimateSwaps(result.dexes, result.paths, result.amountIns), result.expected)
+    console.log(amountIn)
 }
 
 main()

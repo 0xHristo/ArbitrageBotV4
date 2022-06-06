@@ -1,12 +1,13 @@
+import { off } from "process"
 import { CycleInfo } from "./cycleInfo"
 import { Market } from "./marketInfo"
 import { PairInfo, Token } from "./pairInfo"
 
 export class NetworkInfo {
-    readonly initialToken: Token
-    readonly markets: Map<string, Market> = new Map()
-    readonly tokens: Set<Token> = new Set()
-    readonly marketsByPair: Map<string, Market> = new Map()
+    public readonly initialToken: Token
+    public readonly markets: Map<string, Market> = new Map()
+    public readonly tokens: Set<Token> = new Set()
+    public readonly marketsByPair: Map<string, PairInfo[]> = new Map()
 
     constructor(initialToken: Token, pairs: PairInfo[]) {
         this.initialToken = initialToken
@@ -23,13 +24,13 @@ export class NetworkInfo {
                 this.markets.set(pair.token2.address, marketToken2)
             }
 
-            let marketPair: Market | undefined = this.marketsByPair.get(pair.name)
+            let marketPair: PairInfo[] | undefined = this.marketsByPair.get(pair.name)
             if (marketPair === undefined) {
-                marketPair = new Market(pair.name)
-                this.marketsByPair.set(pair.name, marketToken2)
+                this.marketsByPair.set(pair.name, [ ])
+            } else {
+                marketPair.push(pair)
             }
 
-            marketPair.push(pair)
             marketToken1.push(pair)
             marketToken2.push(pair)
             this.tokens.add(pair.token1)
@@ -39,6 +40,7 @@ export class NetworkInfo {
 
     createCycles = (): CycleInfo[] => {
         let cycles: CycleInfo[] = []
+        let a = 1
         const initialTokenMarket = this.markets.get(this.initialToken.address)
         if (initialTokenMarket !== undefined) {
             for (let i = 0; i < initialTokenMarket.pairs.length; i++) {
@@ -50,23 +52,34 @@ export class NetworkInfo {
                         const secondPair = secondTokenMarket.pairs[j]
                         const thirdToken = secondPair.other(secondToken.address)
                         if (thirdToken.address != this.initialToken.address) {
-                            const thirdTokenMarket = this.marketsByPair.get(PairInfo.nameFor(thirdToken, secondToken))
+                            const thirdTokenMarket = this.markets.get(thirdToken.address)
                             if (thirdTokenMarket !== undefined) {
                                 for (let k = 0; k < thirdTokenMarket.pairs.length; k++) {
                                     const thirdPair = thirdTokenMarket.pairs[k]
-                                    cycles.push(
-                                        new CycleInfo(this.initialToken,
-                                            [
-                                                firstPair,
-                                                secondPair,
-                                                thirdPair,
-                                                firstPair
-                                            ])
-                                    )
+                                    // if (a === 1 && thirdPair.name === "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063 - 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619") {
+                                    //     a = 0
+                                    //     console.log(thirdToken.address)
+                                    //     console.log(thirdPair.other(thirdToken.address))
+                                    //     console.log(this.marketsByPair.get(PairInfo.nameFor(thirdPair.other(thirdToken.address), this.initialToken)))
+                                    // }
+                                    const fourthToken = thirdPair.other(thirdToken.address)
+                                    if (fourthToken.address != secondToken.address && fourthToken.address != this.initialToken.address) {
+                                        const fourthTokenMarket = this.marketsByPair.get(PairInfo.nameFor(fourthToken, this.initialToken))
+                                        if (fourthTokenMarket != undefined && fourthTokenMarket.length > 0) {
+                                            const fourthPair = fourthTokenMarket[0]
+                                            cycles.push(
+                                                new CycleInfo(this.initialToken,
+                                                    [
+                                                        firstPair,
+                                                        secondPair,
+                                                        thirdPair,
+                                                        fourthPair
+                                                    ])
+                                            )
+                                        }
+                                    }
                                 }
                             }
-
-
                         }
                     }
                 }

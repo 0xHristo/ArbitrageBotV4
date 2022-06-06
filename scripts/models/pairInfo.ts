@@ -37,8 +37,6 @@ export class PairInfo {
     readonly reserve1: BigNumber
     readonly reserve2: BigNumber
     readonly dex: Dex
-    readonly priceToken1: BigNumber
-    readonly priceToken2: BigNumber
     readonly address: string
     readonly k: BigNumber
 
@@ -50,19 +48,13 @@ export class PairInfo {
         this.reserve2 = isBigger ? pairInfo.reserve2 : pairInfo.reserve1
         this.dex = pairInfo.dex
         this.address = pairInfo.address
-        this.priceToken1 = this.reserve2
-            .mul(BigNumber.from(10).pow(this.token1.digits))
-            .div(this.reserve1)
-        this.priceToken2 = this.reserve1
-            .mul(BigNumber.from(10).pow(this.token2.digits))
-            .div(this.reserve2)
         this.k = this.reserve1.mul(this.reserve2)
     }
 
     static nameFor(token1: Token, token2: Token): string {
         return token1.address > token2.address ?
-            `${token1.address}-${token2.address}` :
-            `${token2.address}-${token1.address}`
+            `${token1.address} - ${token2.address}` :
+            `${token2.address} - ${token1.address}`
     }
 
     get name(): string {
@@ -81,7 +73,23 @@ export class PairInfo {
         return _of == this.token1.address ? this.reserve1 : this.reserve2
     }
 
-    price(_of: string): BigNumber {
-        return _of == this.token1.address ? this.priceToken1 : this.priceToken2
+    amountOutToken2(amountInToken1: BigNumber): BigNumber {
+        const amountInToken1WithFee: BigNumber = amountInToken1.mul(997)
+        const numerator = amountInToken1WithFee.mul(this.reserve2)
+        const denominator = this.reserve1.mul(1000).add(amountInToken1WithFee)
+
+        return numerator.div(denominator)
+    }
+
+    amountOutToken1(amountInToken2: BigNumber): BigNumber {
+        const amountInToken2WithFee: BigNumber = amountInToken2.mul(997)
+        const numerator = amountInToken2WithFee.mul(this.reserve1)
+        const denominator = this.reserve2.mul(1000).add(amountInToken2WithFee)
+
+        return numerator.div(denominator)
+    }
+
+    amountOut(tokenIn: string, amountIn: BigNumber): BigNumber {
+        return tokenIn == this.token1.address ? this.amountOutToken2(amountIn) : this.amountOutToken1(amountIn);
     }
 }

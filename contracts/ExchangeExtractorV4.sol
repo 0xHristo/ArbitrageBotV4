@@ -787,4 +787,25 @@ contract ExchangeExtractorV4 {
         IERC20(paths[0][0][0]).safeTransfer(msg.sender, currentAmountIn - 1);
         return true;
     }
+
+    function getPairReserves(
+        IUniswapV2Router02 router,
+        address[] calldata tokanAs,
+        address[] calldata tokenBs
+    ) public view returns (uint256[] memory, uint256[] memory) {
+        IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
+        uint256[] memory pairAsReserves = new uint256[](tokanAs.length);
+        uint256[] memory pairBsReserves = new uint256[](tokanAs.length);
+
+        for (uint256 i = 0; i < tokanAs.length; i++) {
+            IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(tokanAs[i], tokenBs[i]));
+            uint256[2] memory pairReserves;
+            (pairReserves[0], pairReserves[1], ) = pair.getReserves();
+
+            pairAsReserves[i] = pairReserves[0];
+            pairBsReserves[i] = pairReserves[1];
+        }
+
+        return (pairAsReserves, pairBsReserves);
+    }
 }

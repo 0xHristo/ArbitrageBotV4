@@ -30,7 +30,7 @@ const getPairsInfoInDex = (exchangeExtractor: ExchangeExtractorV4) =>
                         reserve1: reserves[i][0],
                         reserve2: reserves[i][1],
                         address: pairAddresses[i][2],
-                        dex
+                        dex: dex.address
                     })
 
                     pairInfos.push(pairInfo)
@@ -58,12 +58,15 @@ const getAllPairsInDex = (dex: Dex, getPairsInfo: GetPairInfoForDex): Promise<Pa
 const main = async () => {
     const [deployer] = await ethers.getSigners()
     const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
-
-    deployer.provider?.on("block", async (e) => {
-        console.log(e)
+    let lock = 0
+    //deployer.provider?.on("block", async (e) => {
+    if (lock == 1)
+        return
+    // console.log(e)
+    try {
         const dexes: Dex[] = [
-            new Dex(Dexes.quickswap, "quickswap", 6000 /* 34407 */),
-            new Dex(Dexes.sushiswap, "sushiswap", 5948)
+            new Dex(Dexes.quickswap, "quickswap", 100 /* 34407 */),
+            new Dex(Dexes.sushiswap, "sushiswap", 100 /* 5948 */)
         ]
 
         const arrayOfPairsArrays = await Promise.all([
@@ -79,13 +82,16 @@ const main = async () => {
         const network = new NetworkInfo(wmaticToken, arrayOfPairs)
         const cycles = network.createCycles()
 
-        const amountIn = BigNumber.from(10).pow(19)
+        const amountIn = (BigNumber.from(10).pow(18)).mul(4)
 
-        console.log(cycles.length)
+        // console.log(cycles[0])
         const result = cycles
-            .filter((_, i) => i < 1200)
+            // .filter((_, i) => i < 1200)
             .map(cycle => cycle.amountOut(amountIn))
             .filter(([_, isProfitable]) => isProfitable)
+            .sort((a, b) => {
+                return b[0].gt(a[0]) ? -1 : 1
+            })
             .reduce((prev, [amountOut, , cycle]) => {
                 prev.dexes.push(cycle.input[0])
                 prev.paths.push(cycle.input[1])
@@ -98,18 +104,31 @@ const main = async () => {
                 amountIns: <BigNumber[]>[],
                 expected: <BigNumber[]>[]
             })
-        console.log(result)
+        console.log(result.expected.length)
+        console.log(result.expected)
         if (result.dexes.length > 0) {
-            const transaction = await exchangeExtractor.arbitrages(result.dexes, result.paths,
+            // const transaction = await exchangeExtractor.arbitrage(
+            //     result.dexes[0],
+            //     result.paths[0],
+            //     amountIn,
+            //     Date.now() + 10000,
+            //     {
+            //         gasLimit: 3000000,
+            //     })
+            const transaction = await exchangeExtractor.arbitrages(result.dexes.slice(0, 2), result.paths.slice(0, 2),
                 amountIn,
                 Date.now() + 10000, {
                 gasLimit: 3000000,
             }
             )
+            console.log(transaction.hash)
             const receipt = await transaction.wait()
-            console.log(receipt.transactionHash)
         }
-    })
+    } catch (e) {
+        console.log(e)
+    }
+    lock = 0
+    //})
 }
 
 main()

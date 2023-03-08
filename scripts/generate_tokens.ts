@@ -11,7 +11,7 @@ const main = async () => {
     const quickswap = Dexes['quickswap']
 
     try {
-        const [pairInfo] = await exchangeExtractor.callStatic.extract(quickswap, 34307 - 900, 34307);
+        const [pairInfo] = await exchangeExtractor.callStatic.extract(Dexes['sushiswap'], 0, 1200);
        
         const pairs = pairInfo.map(singlePairInfo => [singlePairInfo[0], singlePairInfo[1]]);
 
@@ -26,7 +26,7 @@ const main = async () => {
         })
         console.log(tokens)
 
-        fs.writeFile("csv/tokens.csv", tokens.join(','), (err) => {
+        fs.writeFile("csv/tokens_ivo.csv", tokens.join(','), (err) => {
             if(err) {
                 console.log("Error occured:")
                 console.log(err)

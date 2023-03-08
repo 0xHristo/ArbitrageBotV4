@@ -26,6 +26,7 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     "estimateSwap(address[],address[][],uint256)": FunctionFragment;
     "estimateSwaps(address[][],address[][][],uint256[])": FunctionFragment;
     "extract(address,uint256,uint256)": FunctionFragment;
+    "getPairReserves(address,address[],address[])": FunctionFragment;
   };
 
   encodeFunctionData(
@@ -48,6 +49,10 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     functionFragment: "extract",
     values: [string, BigNumberish, BigNumberish]
   ): string;
+  encodeFunctionData(
+    functionFragment: "getPairReserves",
+    values: [string, string[], string[]]
+  ): string;
 
   decodeFunctionResult(functionFragment: "arbitrage", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "arbitrages", data: BytesLike): Result;
@@ -60,6 +65,10 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "extract", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getPairReserves",
+    data: BytesLike
+  ): Result;
 
   events: {};
 }
@@ -146,6 +155,13 @@ export class ExchangeExtractorV4 extends BaseContract {
     ): Promise<
       [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
     >;
+
+    getPairReserves(
+      router: string,
+      tokanAs: string[],
+      tokenBs: string[],
+      overrides?: CallOverrides
+    ): Promise<[BigNumber[], BigNumber[]]>;
   };
 
   arbitrage(
@@ -187,6 +203,13 @@ export class ExchangeExtractorV4 extends BaseContract {
     [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
   >;
 
+  getPairReserves(
+    router: string,
+    tokanAs: string[],
+    tokenBs: string[],
+    overrides?: CallOverrides
+  ): Promise<[BigNumber[], BigNumber[]]>;
+
   callStatic: {
     arbitrage(
       routers: string[],
@@ -226,6 +249,13 @@ export class ExchangeExtractorV4 extends BaseContract {
     ): Promise<
       [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
     >;
+
+    getPairReserves(
+      router: string,
+      tokanAs: string[],
+      tokenBs: string[],
+      overrides?: CallOverrides
+    ): Promise<[BigNumber[], BigNumber[]]>;
   };
 
   filters: {};
@@ -267,6 +297,13 @@ export class ExchangeExtractorV4 extends BaseContract {
       _stop: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
+
+    getPairReserves(
+      router: string,
+      tokanAs: string[],
+      tokenBs: string[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
@@ -304,6 +341,13 @@ export class ExchangeExtractorV4 extends BaseContract {
       router: string,
       _start: BigNumberish,
       _stop: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getPairReserves(
+      router: string,
+      tokanAs: string[],
+      tokenBs: string[],
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
   };

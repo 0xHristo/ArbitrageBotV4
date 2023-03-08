@@ -18,7 +18,7 @@ export class CycleInfo {
 
         this.pairs.forEach(pair => {
             const secondTokenAddress = pair.other(firstTokenAddress).address
-            dexes.push(pair.dex.address)
+            dexes.push(pair.dex)
             paths.push([
                 firstTokenAddress,
                 secondTokenAddress
@@ -64,6 +64,7 @@ export class CycleInfo {
             tokenInAddress = pair.other(tokenInAddress).address
         }
 
-        return [amountOut, amountOut.gt(amountIn), this]
+        const isProfitable =  amountOut.gt(amountIn)
+        return [amountOut, isProfitable, this]
     }
 }

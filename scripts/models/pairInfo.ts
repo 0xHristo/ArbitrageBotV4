@@ -27,7 +27,7 @@ export type PairInfoObject = {
     token2: Token,
     reserve1: BigNumber,
     reserve2: BigNumber,
-    dex: Dex,
+    dex: string,
     address: string
 }
 
@@ -36,8 +36,8 @@ export class PairInfo {
     readonly token2: Token
     readonly reserve1: BigNumber
     readonly reserve2: BigNumber
-    readonly dex: Dex
-    readonly address: string
+    readonly dex: string
+    readonly address?: string
     readonly k: BigNumber
 
     constructor(pairInfo: PairInfoObject) {
@@ -92,4 +92,9 @@ export class PairInfo {
     amountOut(tokenIn: string, amountIn: BigNumber): BigNumber {
         return tokenIn == this.token1.address ? this.amountOutToken2(amountIn) : this.amountOutToken1(amountIn);
     }
+}
+
+export interface Path {
+    from: string;
+    to: string;
 }

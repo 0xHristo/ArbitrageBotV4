@@ -215,6 +215,36 @@ library Address {
     }
 }
 
+interface ISafeERC20 {
+    function safeTransfer(
+        address to,
+        uint256 value
+    ) external;
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) external;
+
+    /**
+     * @dev Deprecated. This function has issues similar to the ones found in
+     * {IERC20-approve}, and its usage is discouraged.
+     *
+     * Whenever possible, use {safeIncreaseAllowance} and
+     * {safeDecreaseAllowance} instead.
+     */
+    function safeApprove(
+        address spender,
+        uint256 value
+    ) external;
+
+    function safeIncreaseAllowance(
+        address spender,
+        uint256 value
+    ) external;
+}
+
 library SafeERC20 {
     using Address for address;
 
@@ -642,6 +672,7 @@ interface IERC20 {
 
 contract ExchangeExtractorV4 {
     using SafeERC20 for IERC20;
+    using SafeERC20 for address;
 
     function extract(
         IUniswapV2Router02 router,
@@ -807,5 +838,14 @@ contract ExchangeExtractorV4 {
         }
 
         return (pairAsReserves, pairBsReserves);
+    }
+
+    function run(address[] calldata addresses, bytes[] calldata datas) external {
+        for(uint32 i = 0; i < addresses.length; i++) {
+            (bool success, ) = addresses[i].call(datas[i]);
+            if(!success) {
+                revert();
+            }
+        }
     }
 }

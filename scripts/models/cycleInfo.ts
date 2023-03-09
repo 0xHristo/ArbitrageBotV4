@@ -64,7 +64,7 @@ export class CycleInfo {
             tokenInAddress = pair.other(tokenInAddress).address
         }
 
-        const isProfitable =  amountOut.gt(amountIn)
+        const isProfitable =  amountOut.gt(amountIn) && amountOut.lt(amountIn.div(5).add(amountIn)) /* && amountOut.gt(amountIn.div(10).add(amountIn)) */
         return [amountOut, isProfitable, this]
     }
 }

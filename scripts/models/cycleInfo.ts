@@ -64,9 +64,9 @@ export class CycleInfo {
         for (let i = 0; i < this.pairs.length; i++) {
             const pairName = this.pairs[i]
             const pair: PairInfo = PairInfo.pairs[pairName]
-            if(print === true) {
-                pair.amountOut(tokenInAddress, amountOut, true)
-            }
+            // if(print === true) {
+            //     pair.amountOut(tokenInAddress, amountOut, true)
+            // }
             // console.log(tokenInAddress)
             // if (pair.token2.address == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174") {
             //     console.log(pair.name, amountOut, pair.amountOut(tokenInAddress, amountOut), PairInfo.reserves[pair.name])
@@ -75,7 +75,7 @@ export class CycleInfo {
             tokenInAddress = pair.other(tokenInAddress).address
         }
 
-        const isProfitable = amountOut.gt(amountIn) && amountOut.lt(amountIn.div(10).add(amountIn))
+        const isProfitable = amountOut.gt(amountIn) //&& amountOut.lt(amountIn.div(10).add(amountIn))
         return [amountOut, isProfitable, this]
     }
 }

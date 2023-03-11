@@ -38,20 +38,17 @@ export class PairInfo {
     readonly address?: string
 
     constructor(pairInfo: PairInfoObject) {
-        const isBigger = pairInfo.token1.address > pairInfo.token2.address
-        this.token1 = isBigger ? pairInfo.token1 : pairInfo.token2
-        this.token2 = isBigger ? pairInfo.token2 : pairInfo.token1
+        this.token1 = pairInfo.token1
+        this.token2 =pairInfo.token2
         this.dex = pairInfo.dex
     }
 
-    static nameFor(token1: Token, token2: Token): string {
-        return token1.address > token2.address ?
-            `${token1.address} - ${token2.address}` :
-            `${token2.address} - ${token1.address}`
+    get name(): string {
+        return `${this.token1.address} - ${this.token2.address} - ${this.dex}`
     }
 
-    get name(): string {
-        return PairInfo.nameFor(this.token1, this.token2) + ` - ${this.dex}`
+    get nameWithoutDex(): string {
+        return `${this.token1.address} - ${this.token2.address}`
     }
 
     this(address: string): Token {
@@ -80,11 +77,26 @@ export class PairInfo {
 
     amountOut(tokenIn: string, amountIn: BigNumber, print?: boolean): BigNumber {
         if (print === true) {
-            console.log(this.token1, this.token2)
-            console.log(PairInfo.reserves[this.name])
-            console.log(tokenIn == this.token1.address ? 2 : 1)
+            console.log(tokenIn == this.token1.address ? true : false, tokenIn, this.token1.address)
+            console.log(this.token1.address, PairInfo.reserves[this.name][0])
+            console.log(this.token2.address, PairInfo.reserves[this.name][1])
+            console.log(tokenIn == this.token1.address ? this.amountOutToken2(amountIn) : this.amountOutToken1(amountIn))
         }
-        return tokenIn == this.token1.address ? this.amountOutToken2(amountIn) : this.amountOutToken1(amountIn)
+        let reserveIn
+        let reserveOut
+        if(tokenIn == this.token1.address) {
+            reserveIn = PairInfo.reserves[this.name][0]
+            reserveOut = PairInfo.reserves[this.name][1]
+        } else {
+            reserveIn = PairInfo.reserves[this.name][1]
+            reserveOut = PairInfo.reserves[this.name][0]
+        }
+
+        const amountInWithFee: BigNumber = amountIn.mul(997)
+        const numerator = amountInWithFee.mul(reserveOut)
+        const denominator = reserveIn.mul(1000).add(amountInWithFee)
+
+        return numerator.div(denominator)
     }
 }
 

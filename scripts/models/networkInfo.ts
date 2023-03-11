@@ -17,20 +17,20 @@ export class NetworkInfo {
         pairs.forEach(pair => {
             let marketToken1: Market | undefined = this.markets.get(pair.token1.address)
             if (marketToken1 === undefined) {
-                marketToken1 = new Market(pair.name)
+                marketToken1 = new Market(pair.nameWithoutDex)
                 this.markets.set(pair.token1.address, marketToken1)
             }
 
             let marketToken2: Market | undefined = this.markets.get(pair.token2.address)
             if (marketToken2 === undefined) {
-                marketToken2 = new Market(pair.name)
+                marketToken2 = new Market(pair.nameWithoutDex)
                 this.markets.set(pair.token2.address, marketToken2)
             }
 
-            let marketPair: PairInfo[] | undefined = this.marketsByPair.get(pair.name)
+            let marketPair: PairInfo[] | undefined = this.marketsByPair.get(pair.nameWithoutDex)
             if (marketPair === undefined) {
                 marketPair = []
-                this.marketsByPair.set(pair.name, marketPair)
+                this.marketsByPair.set(pair.nameWithoutDex, marketPair)
             }
 
             marketPair.push(pair)
@@ -38,25 +38,26 @@ export class NetworkInfo {
             marketToken2.push(pair)
             this.tokens.add(pair.token1)
             this.tokens.add(pair.token2)
+
         })
+        console.log(this.marketsByPair)
     }
 
     _createCycles = (currentToken: Token, prevToken: Token, remainingLength: number, pairs: string[]): CycleInfo[] => {
         if (remainingLength == 1) {
-            return Object.values(Dexes).map(dex => {
-                const name = PairInfo.nameFor(currentToken, this.initialToken) + ` - ${dex}`
-                const currentTokenMarket = this.marketsByPair.get(name)
-                if (currentTokenMarket != undefined && currentTokenMarket.length > 0) {
-                    return currentTokenMarket.map(pair => {
-                        return new CycleInfo(this.initialToken,
-                            [
-                                ...pairs,
-                                pair.name
-                            ])
-                    })
-                }
-                return []
-            }).reduce((prev, current) => [...prev, ...current])
+            const pair = new PairInfo({
+                token1: currentToken,
+                token2: this.initialToken,
+                dex:""
+            })
+            const currentTokenMarket = this.marketsByPair.get(pair.nameWithoutDex)
+            return currentTokenMarket?.map(pair => {
+                return new CycleInfo(this.initialToken,
+                    [
+                        ...pairs,
+                        pair.name
+                    ])
+            }) ?? []
         } else if (remainingLength > 1) {
             const currentTokenMarket = this.markets.get(currentToken.address)
             if (currentTokenMarket !== undefined) {
@@ -103,19 +104,24 @@ export class NetworkInfo {
                                     // }
                                     const fourthToken = thirdPair.other(thirdToken.address)
                                     if (fourthToken.address != secondToken.address && fourthToken.address != this.initialToken.address) {
-                                        const fourthTokenMarket = this.marketsByPair.get(PairInfo.nameFor(fourthToken, this.initialToken))
-                                        if (fourthTokenMarket != undefined && fourthTokenMarket.length > 0) {
-                                            const fourthPair = fourthTokenMarket[0]
-                                            cycles.push(
-                                                new CycleInfo(this.initialToken,
-                                                    [
-                                                        firstPair.name,
-                                                        secondPair.name,
-                                                        thirdPair.name,
-                                                        fourthPair.name
-                                                    ])
-                                            )
-                                        }
+                                        // const pair = new PairInfo({
+                                        //     token1: fourthToken,
+                                        //     token2: this.initialToken,
+                                        //     dex
+                                        // })
+                                        // const fourthTokenMarket = this.marketsByPair.get(PairInfo.nameFor(fourthToken, this.initialToken))
+                                        // if (fourthTokenMarket != undefined && fourthTokenMarket.length > 0) {
+                                        //     const fourthPair = fourthTokenMarket[0]
+                                        //     cycles.push(
+                                        //         new CycleInfo(this.initialToken,
+                                        //             [
+                                        //                 firstPair.name,
+                                        //                 secondPair.name,
+                                        //                 thirdPair.name,
+                                        //                 fourthPair.name
+                                        //             ])
+                                        //     )
+                                        // }
                                     }
                                 }
                             }

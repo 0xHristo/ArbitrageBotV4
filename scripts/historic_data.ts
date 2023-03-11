@@ -15,14 +15,35 @@ import { Dexes } from "../tokens/Dexes"
 
 const initialToken = BaseAssets.WMATIC
 const amountIn = (BigNumber.from(10).pow(18)).mul(1)
-const exchangesCount = 1
-const tokensInCycle = 6
+const exchangesCount = 4
+const tokensInCycle = 7
 
-const tokensWithTransactionAbove = 300
+const tokensWithTransactionAbove = 0
 
-const shouldParse = true
+const shouldParse = false
 const shouldApproveExchangeExtractorToTokens = false
 const shouldRegenerateCycles = false
+
+const enablePrint = false
+
+export const log = console.log
+
+console.log = (...any) => {
+    if (enablePrint) {
+        log(any)
+    }
+}
+
+
+const blackListedTokens = [
+    "0xAEe0ffb690B37449B7f1C49B199E1E3ec6084490",
+    "0xA9536B9c75A9E0faE3B56a96AC8EdF76AbC91978",
+    "0xA96D47c621a8316d4F9539E3B38180C7067e84CA",
+    "0x01E0d17a533E5930A349C2BB71304F04F20AB12B",
+    "0x4634ea4BA6Cb003E59C15a04422a95a9C11BE245",
+    "0x8440178087C4fd348D43d0205F4574e0348a06F0",
+    "0x1B43b97094Aa3c6Cc678eDb9e28Ac67dAaa7Cc64"
+]
 
 function getGweiEthers(gweiAmount: number): BigNumber {
     return ethers.utils.parseUnits(Math.ceil(gweiAmount).toString(), "gwei")
@@ -100,48 +121,49 @@ interface PairsWithReserves {
 const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigNumber, boolean, CycleInfo][]> => {
     var time1 = new Date().getTime()
     const [deployer] = await ethers.getSigners()
-    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
+    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach("0x80D8c75BC1af9C9F1b001DF9bD6a6405F91CD06e")
     console.log(5)
 
-    const result: PairsWithReserves[] = await Promise.all(Object.keys(exchangePairs).map(async exchange => {
-        const tokens1s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token1)
-        const tokens2s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token2)
-        console.log(tokens1s)
-        const reserves = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
-        return {
-            dex: exchange,
-            pairs: exchangePairs[exchange],
-            reserves: [reserves[1], reserves[0]]
-        }
-    }))
-    console.log(6)
-
-    const arrayOfPairs: PairInfo[] = []
     const reserveMap: any = {}
     const pairsMap: any = {}
-    result.forEach(pairs => {
-        pairs.pairs.forEach((pair: Pair, i: number) => {
-            if(pair.token1 === undefined) console.log("KOREC")
-            if(pair.token2 === undefined) console.log("KOREC")
+    const result: PairInfo[][] = await Promise.all(Object.keys(exchangePairs).map(async exchange => {
+        const tokens1s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token1)
+        const tokens2s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token2)
+
+        const pairData = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
+
+        return pairData.map<PairInfo>(([token1, token2, reserve1, reserve2]) => {
+
+            /// Shadow sorting of token1 & token2 
             const pairInfo = new PairInfo({
-                token1: new Token(pair.token1, 18),
-                token2: new Token(pair.token2, 18),
-                dex: pairs.dex,
+                token1: new Token(token1, 18),
+                token2: new Token(token2, 18),
+                dex: exchange,
             })
-            arrayOfPairs.push(
-                pairInfo
-            )
+
+            if (token1 == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" && token2 == "0xc2132D05D31c914a87C6611C10748AEb04B58e8F") {
+                console.log(`${token1} ${token2} ${exchange}`)
+                console.log([reserve1, reserve2])
+
+                console.log(`${pairInfo.token1.address} ${pairInfo.token2.address} ${pairInfo.dex}`)
+                console.log([reserve1, reserve2])
+            }
 
             pairsMap[pairInfo.name] = pairInfo
-            reserveMap[pairInfo.name] = [pairs.reserves[0][i], pairs.reserves[1][i]]
+            reserveMap[pairInfo.name] = [reserve1, reserve2]
+
+            return pairInfo
         })
-    })
+    }))
+    PairInfo.reserves = reserveMap
+    PairInfo.pairs = pairsMap
+    const arrayOfPairs: PairInfo[] = result.reduce((prev, current) => [...prev, ...current])
+
     console.log(7)
 
     console.log("Total pairs:", arrayOfPairs.length)
 
-    PairInfo.reserves = reserveMap
-    PairInfo.pairs = pairsMap
+
     var time2 = new Date().getTime()
 
 
@@ -155,8 +177,8 @@ const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigN
         cycles = network.createCyclesWithLength(tokensInCycle)
         console.log("Total cycles:", cycles.length)
         filteredCycles = cycles
-        .map(cycle => cycle.amountOut(amountIn))
-        .filter(([_, isProfitable]) => isProfitable)
+            .map(cycle => cycle.amountOut(amountIn))
+            .filter(([_, isProfitable]) => isProfitable)
 
         await fs.promises.writeFile(`exchanges/cycles.log`, JSON.stringify(filteredCycles.map(a => a[2])), { encoding: 'utf-8' })
     } else {
@@ -186,21 +208,21 @@ const main = async () => {
     if (shouldParse) {
         const exchangesTransactions = await readHistoricExchangesTransactions()
         exchangeTransactionPaths = exchangesTransactions
-        .map(parseTransactionData)
-        .reduce<Pair[]>((prev, current) => {
-            if (current != null) {
-                return [current, ...prev]
-            } else {
-                return prev
-            }
-        }, [])
-        
+            .map(parseTransactionData)
+            .reduce<Pair[]>((prev, current) => {
+                if (current != null) {
+                    return [current, ...prev]
+                } else {
+                    return prev
+                }
+            }, [])
+
         await fs.promises.writeFile(`exchanges/historic_pairs.log`, JSON.stringify(exchangeTransactionPaths), { encoding: 'utf-8' })
     } else {
         exchangeTransactionPaths = JSON.parse(await fs.promises.readFile(`exchanges/historic_pairs.log`, { encoding: "utf-8" }))
     }
     console.log(2)
-    
+
     let exchangePairsFiltered: any = {}
     let tokensMap: any = {}
     if (shouldParse) {
@@ -243,8 +265,12 @@ const main = async () => {
             exchangesPairs[exchange] = []
 
             Object.keys(exchanges[exchange]).map(tokenA => {
+                if (blackListedTokens.indexOf(tokenA) != -1)
+                    return
                 if (tokensMap[tokenA] > averageOccurance) {
                     Object.keys(exchanges[exchange][tokenA]).map(tokenB => {
+                        if (blackListedTokens.indexOf(tokenB) != -1)
+                            return
                         if (tokensMap[tokenB] > averageOccurance) {
                             exchangesPairs[exchange].push(new Pair(tokenA, tokenB, exchange))
                         }
@@ -280,7 +306,7 @@ const main = async () => {
         const wmatic = IERC20__factory.connect(initialToken.address, deployer)
         const commands: Action[] = []
 
-        const approvesPromises: Promise<Action>[] = Object.keys(tokensMap).filter(a => tokensMap[a] > tokensWithTransactionAbove).map<Promise<Action>>(async token => {
+        const approvesPromises: Promise<Action>[] = Object.keys(tokensMap).filter(a => tokensMap[a] > tokensWithTransactionAbove && tokensMap[a] < 20 && blackListedTokens.indexOf(a) == -1).map<Promise<Action>>(async token => {
             const tnx = await wmatic.populateTransaction.approve(
                 Dexes.sushiswap,
                 BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
@@ -293,7 +319,7 @@ const main = async () => {
 
         const approves = await Promise.all(approvesPromises)
 
-        const tnx = await exchangeExtractor.run(
+        const tnx2 = await exchangeExtractor.run(
             approves.map<string>((action: Action): string => action.address),
             approves.map<string>((action: Action): string => action.data),
             {
@@ -306,8 +332,8 @@ const main = async () => {
             }
         )
 
-        console.log(tnx.hash)
-        await tnx.wait()
+        console.log(tnx2.hash)
+        await tnx2.wait()
     }
 
     var time1 = new Date().getTime()
@@ -418,6 +444,12 @@ const main = async () => {
         const transferBackAmount = cyclesToExploit
             .reduce<BigNumber>((profit, [amountOut]) => profit.add(amountOut.sub(amountIn)), BigNumber.from(0)).add(amountIn)
 
+        if (transferBackAmount.lt(amountIn.add(amountIn.div(10)))) {
+            log("Potential profit", transferBackAmount.toString(), "from", cyclesToExploit.length, "cycles")
+            fs.appendFile(`exchanges/profits_wmatic.csv`, `${transferBackAmount.toString()},\n`, { encoding: 'utf-8' }, (e) => { })
+            return
+        }
+
         const actions = await Promise.all(actionPromises)
 
         const finalActions: Action[] = [
@@ -442,6 +474,7 @@ const main = async () => {
         var time2 = new Date().getTime()
         console.log(`Elapsed time: ${time2.valueOf() - time1.valueOf()}`)
         // return
+
         try {
             const tnx = await exchangeExtractor.runSimple(
                 addresses,
@@ -457,17 +490,17 @@ const main = async () => {
                     maxFeePerGas: getGweiEthers(networkGasPrice.high.maxFeePerGas),
                 }
             )
-            console.log(tnx.hash)
-            console.log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
+            log(tnx.hash)
+            log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
 
 
-            await tnx.wait().catch(() => console.log("FAILED!"))
-            console.log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
+            await tnx.wait().catch(() => log("FAILED!"))
+            log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
         } catch (e) {
-            console.log(e)
+            log(e)
         }
     }
 }
 
 export const CheckForArbitrage = async () => await main()
-main().catch(console.log)
+main().catch(log)

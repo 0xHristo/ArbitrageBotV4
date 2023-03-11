@@ -819,25 +819,35 @@ contract ExchangeExtractorV4 {
         return true;
     }
 
+    struct PairInfo {
+        address token1;
+        address token2;
+        uint256 reserve1;
+        uint256 reserve2;
+    }
+
     function getPairReserves(
         IUniswapV2Router02 router,
         address[] calldata tokanAs,
         address[] calldata tokenBs
-    ) public view returns (uint256[] memory, uint256[] memory) {
+    ) public view returns (PairInfo[] memory) {
         IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
-        uint256[] memory pairAsReserves = new uint256[](tokanAs.length);
-        uint256[] memory pairBsReserves = new uint256[](tokanAs.length);
+        PairInfo[] memory pairsData = new PairInfo[](tokanAs.length);
 
         for (uint256 i = 0; i < tokanAs.length; i++) {
             IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(tokanAs[i], tokenBs[i]));
             uint256[2] memory pairReserves;
             (pairReserves[0], pairReserves[1], ) = pair.getReserves();
 
-            pairAsReserves[i] = pairReserves[0];
-            pairBsReserves[i] = pairReserves[1];
+            pairsData[i] = PairInfo({
+                token1: pair.token0(),
+                token2: pair.token1(),
+                reserve1: pairReserves[0],
+                reserve2: pairReserves[1]
+            });
         }
 
-        return (pairAsReserves, pairBsReserves);
+        return pairsData;
     }
 
     function run(address[] calldata addresses, bytes[] calldata datas) external {

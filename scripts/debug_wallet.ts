@@ -29,7 +29,7 @@ const main = async () => {
     console.log(nonce)
     const networkGasPrice: GasPrice = await getNetworkGasPrice("polygon")
 
-    const wmatic = IERC20__factory.connect(BaseAssets.WMATIC.address, wallet)
+    const wmatic = IERC20__factory.connect(BaseAssets.WETH.address, wallet)
 
 
    const t = await wmatic.approve(

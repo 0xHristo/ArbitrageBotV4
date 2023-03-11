@@ -173,7 +173,16 @@ export class ExchangeExtractorV4 extends BaseContract {
       tokanAs: string[],
       tokenBs: string[],
       overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber[]]>;
+    ): Promise<
+      [
+        ([string, string, BigNumber, BigNumber] & {
+          token1: string;
+          token2: string;
+          reserve1: BigNumber;
+          reserve2: BigNumber;
+        })[]
+      ]
+    >;
 
     run(
       addresses: string[],
@@ -234,7 +243,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     tokanAs: string[],
     tokenBs: string[],
     overrides?: CallOverrides
-  ): Promise<[BigNumber[], BigNumber[]]>;
+  ): Promise<
+    ([string, string, BigNumber, BigNumber] & {
+      token1: string;
+      token2: string;
+      reserve1: BigNumber;
+      reserve2: BigNumber;
+    })[]
+  >;
 
   run(
     addresses: string[],
@@ -295,7 +311,14 @@ export class ExchangeExtractorV4 extends BaseContract {
       tokanAs: string[],
       tokenBs: string[],
       overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber[]]>;
+    ): Promise<
+      ([string, string, BigNumber, BigNumber] & {
+        token1: string;
+        token2: string;
+        reserve1: BigNumber;
+        reserve2: BigNumber;
+      })[]
+    >;
 
     run(
       addresses: string[],

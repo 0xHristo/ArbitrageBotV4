@@ -1,17 +1,20 @@
 import { ethers, network } from "hardhat"
-import { CheckForArbitrage } from "./historic_data"
+import { CheckForArbitrage, log } from "./historic_data"
 var url = "ADD_YOUR_ETHEREUM_NODE_WSS_URL"
 
 var init = function () {
     var customWsProvider = ethers.provider
     let start = new Date().getTime()
     customWsProvider.on("block", (blockNumber) => {
-        console.log("----------------------------------------------------------------------")
+        log("----------------------------------------------------------------------")
         let end = new Date().getTime()
-        console.log(`Block $${blockNumber} in: ${end.valueOf() - start.valueOf()} ms`)
+        log(`Block $${blockNumber} in: ${end.valueOf() - start.valueOf()} ms`)
         start = end
 
-        CheckForArbitrage().catch(() => {})
+        // if (blockNumber % 2 == 0) {
+            CheckForArbitrage().catch(() => { })
+        // }
+
         // Emitted on every block change
     })
 }

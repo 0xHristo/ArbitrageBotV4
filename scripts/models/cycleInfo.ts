@@ -3,10 +3,10 @@ import { ExchangeExtractorV4, IUniswapV2Factory, IUniswapV2Pair__factory } from 
 import { PairInfo, Token } from "./pairInfo"
 
 export class CycleInfo {
-    readonly pairs: PairInfo[] = []
+    readonly pairs: string[] = []
     readonly initialToken: Token
 
-    constructor(initialToken: Token, pairs: PairInfo[]) {
+    constructor(initialToken: Token, pairs: string[]) {
         this.pairs = pairs
         this.initialToken = initialToken
     }
@@ -16,7 +16,8 @@ export class CycleInfo {
         let paths: string[][] = []
         let firstTokenAddress = this.initialToken.address
 
-        this.pairs.forEach(pair => {
+        this.pairs.forEach(pairName => {
+            const pair = PairInfo.pairs[pairName]
             const secondTokenAddress = pair.other(firstTokenAddress).address
             dexes.push(pair.dex)
             paths.push([
@@ -34,18 +35,21 @@ export class CycleInfo {
         let isValid = true
 
         for (let i = 0; i < this.pairs.length; i++) {
-            const pair = this.pairs[i]
+            const pairName = this.pairs[i]
+            const pair = PairInfo.pairs[pairName]
+
             isValid = addressIn == pair.other(pair.other(addressIn).address).address &&
-            pair.other(addressIn).address == pair.other(pair.this(addressIn).address).address
+                pair.other(addressIn).address == pair.other(pair.this(addressIn).address).address
             addressIn = pair.other(addressIn).address
         }
-        
+
         return isValid
     }
 
     print(): void {
         let addressIn = this.initialToken.address
-        this.pairs.forEach(pair => {
+        this.pairs.forEach(pairName => {
+            const pair = PairInfo.pairs[pairName]
             const adressOut = pair.other(addressIn).address
             console.log("--------------")
             console.log(addressIn, "->", adressOut)
@@ -54,17 +58,24 @@ export class CycleInfo {
         })
     }
 
-    amountOut = (amountIn: BigNumber): [BigNumber, boolean, this] => {
+    amountOut = (amountIn: BigNumber, print?: boolean): [BigNumber, boolean, this] => {
         let amountOut = amountIn
         let tokenInAddress = this.initialToken.address
-
         for (let i = 0; i < this.pairs.length; i++) {
-            const pair = this.pairs[i]
+            const pairName = this.pairs[i]
+            const pair: PairInfo = PairInfo.pairs[pairName]
+            if(print === true) {
+                pair.amountOut(tokenInAddress, amountOut, true)
+            }
+            // console.log(tokenInAddress)
+            // if (pair.token2.address == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174") {
+            //     console.log(pair.name, amountOut, pair.amountOut(tokenInAddress, amountOut), PairInfo.reserves[pair.name])
+            // }
             amountOut = pair.amountOut(tokenInAddress, amountOut)
             tokenInAddress = pair.other(tokenInAddress).address
         }
 
-        const isProfitable =  amountOut.gt(amountIn) && amountOut.lt(amountIn.div(5).add(amountIn)) /* && amountOut.gt(amountIn.div(10).add(amountIn)) */
+        const isProfitable = amountOut.gt(amountIn) && amountOut.lt(amountIn.div(10).add(amountIn))
         return [amountOut, isProfitable, this]
     }
 }

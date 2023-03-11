@@ -4,6 +4,7 @@ import { ExchangeExtractor } from "../tokens/ExchangeExtractor"
 import { BigNumber, Wallet } from "ethers"
 import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
+import { BaseAssets } from "../tokens/BaseAssets"
 
 function getGweiEthers(gweiAmount: number): BigNumber {
     return ethers.utils.parseUnits(Math.ceil(gweiAmount).toString(), "gwei")
@@ -28,9 +29,19 @@ const main = async () => {
     console.log(nonce)
     const networkGasPrice: GasPrice = await getNetworkGasPrice("polygon")
 
-    const wmatic = IERC20__factory.connect("0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270", wallet)
+    const wmatic = IERC20__factory.connect(BaseAssets.WMATIC.address, wallet)
 
 
+   const t = await wmatic.approve(
+        ExchangeExtractor,
+        BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), {
+        type: 2,
+        maxPriorityFeePerGas: getGweiEthers(
+            networkGasPrice.asap.maxPriorityFeePerGas
+        ),
+        maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
+    })
+    console.log(t.hash)
     const blk = await ethers.provider.getBlockNumber()
     console.log(networkGasPrice.asap)
     try {

@@ -848,4 +848,17 @@ contract ExchangeExtractorV4 {
             }
         }
     }
+
+    function runSimple(address[] calldata addresses, bytes[] calldata datas, address token, uint256 amountIn) external {
+        IERC20(token).transferFrom(msg.sender, address(this), amountIn);
+
+        for(uint32 i = 0; i < addresses.length; i++) {
+            (bool success, ) = addresses[i].call(datas[i]);
+            if(!success) {
+                revert();
+            }
+        }
+
+        IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)) - 1);
+    }
 }

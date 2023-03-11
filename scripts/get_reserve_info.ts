@@ -33,9 +33,6 @@ const getPairsInfoInDex = (exchangeExtractor: ExchangeExtractorV4) =>
                     const pairInfo = new PairInfo({
                         token1: new Token(pairAddresses[i][0], tokenDigits[i][0]),
                         token2: new Token(pairAddresses[i][1], tokenDigits[i][1]),
-                        reserve1: reserves[i][0],
-                        reserve2: reserves[i][1],
-                        address: pairAddresses[i][2],
                         dex: dex.address
                     })
 
@@ -86,7 +83,7 @@ const main = async () => {
         })
 
         const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
-        const network = new NetworkInfo(wmaticToken, arrayOfPairs)
+        const network = new NetworkInfo(wmaticToken)
         const cycles = network.createCycles()
 
         const amountIn = (BigNumber.from(10).pow(18)).mul(1)
@@ -121,7 +118,8 @@ const main = async () => {
                 const actions: Action[] = []
 
                 for (let i = 0; i < cycle.pairs.length; i++) {
-                    const pair = cycle.pairs[i]
+                    const pairName = cycle.pairs[i]
+                    const pair = PairInfo.pairs[pairName]
 
                     const approveExchange = await wmatic.populateTransaction.approve(pair.dex, amountInExchange)
 

@@ -28,6 +28,7 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     "extract(address,uint256,uint256)": FunctionFragment;
     "getPairReserves(address,address[],address[])": FunctionFragment;
     "run(address[],bytes[])": FunctionFragment;
+    "runSimple(address[],bytes[],address,uint256)": FunctionFragment;
   };
 
   encodeFunctionData(
@@ -58,6 +59,10 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     functionFragment: "run",
     values: [string[], BytesLike[]]
   ): string;
+  encodeFunctionData(
+    functionFragment: "runSimple",
+    values: [string[], BytesLike[], string, BigNumberish]
+  ): string;
 
   decodeFunctionResult(functionFragment: "arbitrage", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "arbitrages", data: BytesLike): Result;
@@ -75,6 +80,7 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "run", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "runSimple", data: BytesLike): Result;
 
   events: {};
 }
@@ -174,6 +180,14 @@ export class ExchangeExtractorV4 extends BaseContract {
       datas: BytesLike[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
+
+    runSimple(
+      addresses: string[],
+      datas: BytesLike[],
+      token: string,
+      amountIn: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
   };
 
   arbitrage(
@@ -228,6 +242,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  runSimple(
+    addresses: string[],
+    datas: BytesLike[],
+    token: string,
+    amountIn: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   callStatic: {
     arbitrage(
       routers: string[],
@@ -278,6 +300,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     run(
       addresses: string[],
       datas: BytesLike[],
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    runSimple(
+      addresses: string[],
+      datas: BytesLike[],
+      token: string,
+      amountIn: BigNumberish,
       overrides?: CallOverrides
     ): Promise<void>;
   };
@@ -334,6 +364,14 @@ export class ExchangeExtractorV4 extends BaseContract {
       datas: BytesLike[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
+
+    runSimple(
+      addresses: string[],
+      datas: BytesLike[],
+      token: string,
+      amountIn: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
@@ -384,6 +422,14 @@ export class ExchangeExtractorV4 extends BaseContract {
     run(
       addresses: string[],
       datas: BytesLike[],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    runSimple(
+      addresses: string[],
+      datas: BytesLike[],
+      token: string,
+      amountIn: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
   };

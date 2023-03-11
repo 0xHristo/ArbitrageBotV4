@@ -13,6 +13,17 @@ import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
 import { Dexes } from "../tokens/Dexes"
 
+const initialToken = BaseAssets.WMATIC
+const amountIn = (BigNumber.from(10).pow(18)).mul(1)
+const exchangesCount = 1
+const tokensInCycle = 6
+
+const tokensWithTransactionAbove = 300
+
+const shouldParse = true
+const shouldApproveExchangeExtractorToTokens = false
+const shouldRegenerateCycles = false
+
 function getGweiEthers(gweiAmount: number): BigNumber {
     return ethers.utils.parseUnits(Math.ceil(gweiAmount).toString(), "gwei")
 }
@@ -86,14 +97,16 @@ interface PairsWithReserves {
     reserves: [BigNumber[], BigNumber[]]
 }
 
-const constructPairInfoWithReservers = async (exchangePairs: any): Promise<CycleInfo[]> => {
+const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigNumber, boolean, CycleInfo][]> => {
+    var time1 = new Date().getTime()
     const [deployer] = await ethers.getSigners()
     const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
+    console.log(5)
 
     const result: PairsWithReserves[] = await Promise.all(Object.keys(exchangePairs).map(async exchange => {
         const tokens1s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token1)
         const tokens2s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token2)
-
+        console.log(tokens1s)
         const reserves = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
         return {
             dex: exchange,
@@ -101,59 +114,93 @@ const constructPairInfoWithReservers = async (exchangePairs: any): Promise<Cycle
             reserves: [reserves[1], reserves[0]]
         }
     }))
+    console.log(6)
 
     const arrayOfPairs: PairInfo[] = []
-
+    const reserveMap: any = {}
+    const pairsMap: any = {}
     result.forEach(pairs => {
         pairs.pairs.forEach((pair: Pair, i: number) => {
+            if(pair.token1 === undefined) console.log("KOREC")
+            if(pair.token2 === undefined) console.log("KOREC")
+            const pairInfo = new PairInfo({
+                token1: new Token(pair.token1, 18),
+                token2: new Token(pair.token2, 18),
+                dex: pairs.dex,
+            })
             arrayOfPairs.push(
-                new PairInfo({
-                    token1: new Token(pair.token1, 18),
-                    token2: new Token(pair.token2, 18),
-                    reserve1: pairs.reserves[0][i],
-                    reserve2: pairs.reserves[1][i],
-                    dex: pairs.dex,
-                    address: pair.name
-                })
+                pairInfo
             )
+
+            pairsMap[pairInfo.name] = pairInfo
+            reserveMap[pairInfo.name] = [pairs.reserves[0][i], pairs.reserves[1][i]]
         })
     })
+    console.log(7)
 
-    const wmaticToken = new Token(BaseAssets.WMATIC.address, BaseAssets.WMATIC.digits)
-    const network = new NetworkInfo(wmaticToken, arrayOfPairs)
-    const cycles = network.createCycles()
+    console.log("Total pairs:", arrayOfPairs.length)
 
-    return cycles
+    PairInfo.reserves = reserveMap
+    PairInfo.pairs = pairsMap
+    var time2 = new Date().getTime()
+
+
+    let cycles: CycleInfo[]
+    let filteredCycles: [BigNumber, boolean, CycleInfo][]
+
+    if (shouldRegenerateCycles) {
+        console.log("KURR")
+        const wmaticToken = new Token(initialToken.address, initialToken.digits)
+        const network = new NetworkInfo(wmaticToken)
+        cycles = network.createCyclesWithLength(tokensInCycle)
+        console.log("Total cycles:", cycles.length)
+        filteredCycles = cycles
+        .map(cycle => cycle.amountOut(amountIn))
+        .filter(([_, isProfitable]) => isProfitable)
+
+        await fs.promises.writeFile(`exchanges/cycles.log`, JSON.stringify(filteredCycles.map(a => a[2])), { encoding: 'utf-8' })
+    } else {
+        const cycleData = JSON.parse(await fs.promises.readFile(`exchanges/cycles.log`, { encoding: "utf-8" }))
+        cycles = cycleData.map((data: any) => new CycleInfo(data.initialToken, data.pairs))
+        filteredCycles = cycles.map(cycle => cycle.amountOut(amountIn)).filter(([_, isProfitable]) => isProfitable)
+    }
+
+    var time3 = new Date().getTime()
+
+    console.log(`Fetching reserves time: ${time2.valueOf() - time1.valueOf()}`)
+    console.log(`Loading cycles time: ${time3.valueOf() - time2.valueOf()}`)
+
+
+    return filteredCycles
 }
-
-const tokensMap: any = {}
 
 export interface Action {
     address: string,
     data: string
 }
 
-const main = async (shouldParse: boolean, shouldApprove: boolean) => {
+const main = async () => {
     let exchangeTransactionPaths: Pair[]
     const networkGasPrice: GasPrice = await getNetworkGasPrice("polygon")
-
+    console.log(1)
     if (shouldParse) {
         const exchangesTransactions = await readHistoricExchangesTransactions()
         exchangeTransactionPaths = exchangesTransactions
-            .map(parseTransactionData)
-            .reduce<Pair[]>((prev, current) => {
-                if (current != null) {
-                    return [current, ...prev]
-                } else {
-                    return prev
-                }
-            }, [])
-
+        .map(parseTransactionData)
+        .reduce<Pair[]>((prev, current) => {
+            if (current != null) {
+                return [current, ...prev]
+            } else {
+                return prev
+            }
+        }, [])
+        
         await fs.promises.writeFile(`exchanges/historic_pairs.log`, JSON.stringify(exchangeTransactionPaths), { encoding: 'utf-8' })
     } else {
         exchangeTransactionPaths = JSON.parse(await fs.promises.readFile(`exchanges/historic_pairs.log`, { encoding: "utf-8" }))
     }
-
+    console.log(2)
+    
     let exchangePairsFiltered: any = {}
     let tokensMap: any = {}
     if (shouldParse) {
@@ -185,8 +232,9 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
             exchanges[transaction.dex][transaction.token2][transaction.token1] = true
             exchanges[transaction.dex][transaction.token1][transaction.token2] = true
         })
+        console.log(3)
 
-        const averageOccurance = Math.ceil(Object.values(tokensMap).reduce<number>((a: number, b) => { return <number>a + <number>b }, 0) / Object.values(tokensMap).length)
+        const averageOccurance = tokensWithTransactionAbove //Math.ceil(Object.values(tokensMap).reduce<number>((a: number, b) => { return <number>a + <number>b }, 0) / Object.values(tokensMap).length)
         console.log(averageOccurance)
 
         const exchangesPairs: any = {}
@@ -223,16 +271,16 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
         exchangePairsFiltered = JSON.parse(await fs.promises.readFile(`exchanges/historic_pairs_filtered.log`, { encoding: "utf-8" }))
         tokensMap = JSON.parse(await fs.promises.readFile(`exchanges/historic_pairs_tokens_map.log`, { encoding: "utf-8" }))
     }
+    console.log(4)
 
     const [deployer] = await ethers.getSigners()
     const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
 
-    if (shouldApprove) {
-        const wmatic = IERC20__factory.connect(BaseAssets.WMATIC.address, deployer)
-        const exchangesCount = 2
+    if (shouldApproveExchangeExtractorToTokens) {
+        const wmatic = IERC20__factory.connect(initialToken.address, deployer)
         const commands: Action[] = []
 
-        const approvesPromises: Promise<Action>[] = Object.keys(tokensMap).filter(a => tokensMap[a] > 229).map<Promise<Action>>(async token => {
+        const approvesPromises: Promise<Action>[] = Object.keys(tokensMap).filter(a => tokensMap[a] > tokensWithTransactionAbove).map<Promise<Action>>(async token => {
             const tnx = await wmatic.populateTransaction.approve(
                 Dexes.sushiswap,
                 BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
@@ -249,7 +297,7 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
             approves.map<string>((action: Action): string => action.address),
             approves.map<string>((action: Action): string => action.data),
             {
-                gasLimit: 3000000,
+                gasLimit: 10000000,
                 // gasPrice: 30000096308436836
                 maxPriorityFeePerGas: getGweiEthers(
                     networkGasPrice.asap.maxPriorityFeePerGas
@@ -265,26 +313,31 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
     var time1 = new Date().getTime()
 
     const cycles = await constructPairInfoWithReservers(exchangePairsFiltered)
-    const amountIn = (BigNumber.from(10).pow(18)).mul(1)
 
-    const result = cycles
-        .map(cycle => cycle.amountOut(amountIn))
-        .filter(([_, isProfitable]) => isProfitable)
-        .filter(([, , cycle]) => cycle.input[0].every((val, i, arr) => val === arr[0])) /// in one exchange
-        .sort((a, b) => {
-            return b[0].gt(a[0]) ? 1 : -1
-        })
+    console.log("Cycles used:", cycles.length)
+
+    // .filter(([, , cycle]) => cycle.input[0].every((val, i, arr) => val === arr[0])) /// in one exchange
+    var timeFiltering = new Date().getTime()
+
+    const result = cycles.sort((a, b) => {
+        return b[0].gt(a[0]) ? 1 : -1
+    })
+    var timeSorting = new Date().getTime()
+
+    console.log(`Filtering time: ${timeFiltering.valueOf() - time1.valueOf()}`)
+    console.log(`Sorting time: ${timeSorting.valueOf() - timeFiltering.valueOf()}`)
+
     // console.log(result.map(([a]) => a))
-    console.log(`Arbitrages: ${result.map(([a]) => a)}`)
+    // console.log(result[0][2].input[1])
 
-    console.log(result.map(([a, b, cycle]) => cycle.input[0]))
-
-    if (result.length == 0) {
+    // console.log(result.map(([a, b, cycle]) => a))
+    console.log("Filtered cycles:", result.length)
+    console.log(result.slice(0, 20).map(([i]) => i))
+    if (result.length > 0) {
 
         // GIVE APPROVAL TO THE EXCHANGE EXTRACTORA
         // console.log(ethers.utils.defaultAbiCoder.encode(["address[]"], [result.paths[0]]))
-        const wmatic = IERC20__factory.connect(BaseAssets.WMATIC.address, deployer)
-        const exchangesCount = 2
+        const wmatic = IERC20__factory.connect(initialToken.address, deployer)
         const commands: Action[] = []
 
         const takeFunds = await wmatic.populateTransaction.transferFrom(deployer.address, ExchangeExtractor, amountIn)
@@ -293,17 +346,54 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
             address: wmatic.address,
             data: takeFunds.data!
         })
-        // console.log(result.map(([e]) => e))
-        // return 
-        const actionPromises = result.slice(0, exchangesCount).map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
+
+        const cyclesToExploit = []
+        const usedPairs: any = {}
+
+        let i = 0
+        while (i < result.length && cyclesToExploit.length < exchangesCount) {
+            const cycle = result[i][2]
+
+            let hasUsedPairs: boolean = false
+            cycle.pairs.forEach(pairName => {
+                const pair = PairInfo.pairs[pairName]
+                hasUsedPairs = hasUsedPairs || (usedPairs[pair.name] == undefined ? false : true)
+            })
+
+            if (!hasUsedPairs) {
+                cyclesToExploit.push(result[i])
+
+                cycle.pairs.forEach(pairName => {
+                    const pair = PairInfo.pairs[pairName]
+                    usedPairs[pair.name] = true
+                })
+            }
+
+            i++
+        }
+
+        console.log("Arbs:", cyclesToExploit.length)
+
+        // if (cyclesToExploit.length < exchangesCount) {
+        //     console.log("Not enough arbitrages")
+        //     return
+        // }
+
+        cyclesToExploit.forEach(cycle => {
+            cycle[2].amountOut(amountIn, true)
+        })
+
+        const actionPromises = cyclesToExploit.map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
             let amountInExchange = amountIn
             const actions: Action[] = []
 
+            const path = [cycle.input[1][0][0]]
+
             for (let i = 0; i < cycle.pairs.length; i++) {
-                const pair = cycle.pairs[i]
+                const pairName = cycle.pairs[i]
+                const pair = PairInfo.pairs[pairName]
 
-                const approveExchange = await wmatic.populateTransaction.approve(pair.dex, amountInExchange)
-
+                // path.push(cycle.input[1][i][1])
                 const exchange = IUniswapV2Router02__factory.connect(pair.dex, deployer)
 
                 const exchangeTransaction = await exchange.populateTransaction.swapExactTokensForTokens(
@@ -311,68 +401,73 @@ const main = async (shouldParse: boolean, shouldApprove: boolean) => {
                     0,
                     cycle.input[1][i],
                     ExchangeExtractor,
-                    Date.now() + 100000
+                    Date.now() + 10000
                 )
 
-                amountInExchange = pair.amountOut(cycle.input[1][i][0], amountInExchange)
+                amountInExchange = pair.amountOut(cycle.input[1][i][0], amountInExchange).sub(1)
 
-                // actions.push({
-                //     address: cycle.input[1][i][0],
-                //     data: approveExchange.data!
-                // })
                 actions.push({
-                    address: pair.dex,
+                    address: exchange.address,
                     data: exchangeTransaction.data!
                 })
             }
 
-
-            const transferBack = await wmatic.populateTransaction.transfer(deployer.address, amountOut)
-
-            return [
-                {
-                    address: wmatic.address,
-                    data: takeFunds.data!
-                },
-                ...actions,
-                {
-                    address: wmatic.address,
-                    data: transferBack.data!
-                }
-            ]
+            return [...actions]
         })
+
+        const transferBackAmount = cyclesToExploit
+            .reduce<BigNumber>((profit, [amountOut]) => profit.add(amountOut.sub(amountIn)), BigNumber.from(0)).add(amountIn)
 
         const actions = await Promise.all(actionPromises)
 
-        const addresses: string[] = actions.reduce<string[]>((prev, curent) => {
-            return [...prev, ...curent.map<string>((action: Action): string => action.address)]
-        }, [])
+        const finalActions: Action[] = [
+            // {
+            //     address: wmatic.address,
+            //     data: takeFunds.data!
+            // },
+            ...actions.reduce<Action[]>((prev, curent) => {
+                return [...prev, ...curent]
+            }, []),
+            // {
+            //     address: wmatic.address,
+            //     data: transferBack.data!
+            // }
+        ]
 
-        const datas: string[] = actions.reduce<string[]>((prev, curent) => {
-            return [...prev, ...curent.map<string>((action: Action): string => action.data)]
-        }, [])
+        const addresses: string[] = finalActions.map<string>((action: Action): string => action.address)
 
-        const tnx = await exchangeExtractor.run(
-            addresses,
-            datas,
-            {
-                gasLimit: 3000000,
-                // gasPrice: 30000096308436836
-                maxPriorityFeePerGas: getGweiEthers(
-                    networkGasPrice.asap.maxPriorityFeePerGas
-                ),
-                maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
-            }
-        )
-        console.log(tnx.hash)
-        console.log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
+        const datas: string[] = finalActions.map<string>((action: Action): string => action.data)
+        console.log(cyclesToExploit.length)
+        console.log(transferBackAmount)
         var time2 = new Date().getTime()
         console.log(`Elapsed time: ${time2.valueOf() - time1.valueOf()}`)
+        // return
+        try {
+            const tnx = await exchangeExtractor.runSimple(
+                addresses,
+                datas,
+                initialToken.address,
+                amountIn,
+                {
+                    gasLimit: 3000000,
+                    // gasPrice: 30000096308436836
+                    maxPriorityFeePerGas: getGweiEthers(
+                        networkGasPrice.high.maxPriorityFeePerGas
+                    ),
+                    maxFeePerGas: getGweiEthers(networkGasPrice.high.maxFeePerGas),
+                }
+            )
+            console.log(tnx.hash)
+            console.log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
 
-        await tnx.wait().catch(() => console.log("FAILED!"))
-        console.log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
+
+            await tnx.wait().catch(() => console.log("FAILED!"))
+            console.log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
+        } catch (e) {
+            console.log(e)
+        }
     }
 }
 
-export const CheckForArbitrage = async () => await main(false, false)
-main(false, false)
+export const CheckForArbitrage = async () => await main()
+main().catch(console.log)

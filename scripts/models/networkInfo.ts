@@ -2,6 +2,8 @@ import { off } from "process"
 import { CycleInfo } from "./cycleInfo"
 import { Market } from "./marketInfo"
 import { PairInfo, Token } from "./pairInfo"
+import { Pair } from "../historic_data"
+import { Dexes } from "../../tokens/Dexes"
 
 export class NetworkInfo {
     public readonly initialToken: Token
@@ -9,7 +11,8 @@ export class NetworkInfo {
     public readonly tokens: Set<Token> = new Set()
     public readonly marketsByPair: Map<string, PairInfo[]> = new Map()
 
-    constructor(initialToken: Token, pairs: PairInfo[]) {
+    constructor(initialToken: Token) {
+        const pairs: PairInfo[] = Object.values(PairInfo.pairs)
         this.initialToken = initialToken
         pairs.forEach(pair => {
             let marketToken1: Market | undefined = this.markets.get(pair.token1.address)
@@ -26,16 +29,52 @@ export class NetworkInfo {
 
             let marketPair: PairInfo[] | undefined = this.marketsByPair.get(pair.name)
             if (marketPair === undefined) {
-                this.marketsByPair.set(pair.name, [ ])
-            } else {
-                marketPair.push(pair)
+                marketPair = []
+                this.marketsByPair.set(pair.name, marketPair)
             }
 
+            marketPair.push(pair)
             marketToken1.push(pair)
             marketToken2.push(pair)
             this.tokens.add(pair.token1)
             this.tokens.add(pair.token2)
         })
+    }
+
+    _createCycles = (currentToken: Token, prevToken: Token, remainingLength: number, pairs: string[]): CycleInfo[] => {
+        if (remainingLength == 1) {
+            return Object.values(Dexes).map(dex => {
+                const name = PairInfo.nameFor(currentToken, this.initialToken) + ` - ${dex}`
+                const currentTokenMarket = this.marketsByPair.get(name)
+                if (currentTokenMarket != undefined && currentTokenMarket.length > 0) {
+                    return currentTokenMarket.map(pair => {
+                        return new CycleInfo(this.initialToken,
+                            [
+                                ...pairs,
+                                pair.name
+                            ])
+                    })
+                }
+                return []
+            }).reduce((prev, current) => [...prev, ...current])
+        } else if (remainingLength > 1) {
+            const currentTokenMarket = this.markets.get(currentToken.address)
+            if (currentTokenMarket !== undefined) {
+                return currentTokenMarket.pairs
+                .filter(pair => pair.other(currentToken.address).address != prevToken.address)
+                .map(pair => {
+                    const nextToken = pair.other(currentToken.address)
+                    return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name])
+                })
+                .reduce<CycleInfo[]>((prev: CycleInfo[], current: CycleInfo[]) => [...prev, ...current], [])
+            }
+        }
+        
+        return []
+    }
+
+    createCyclesWithLength = (length: number): CycleInfo[] => {
+        return this._createCycles(this.initialToken, this.initialToken, length, [])
     }
 
     createCycles = (): CycleInfo[] => {
@@ -70,10 +109,10 @@ export class NetworkInfo {
                                             cycles.push(
                                                 new CycleInfo(this.initialToken,
                                                     [
-                                                        firstPair,
-                                                        secondPair,
-                                                        thirdPair,
-                                                        fourthPair
+                                                        firstPair.name,
+                                                        secondPair.name,
+                                                        thirdPair.name,
+                                                        fourthPair.name
                                                     ])
                                             )
                                         }

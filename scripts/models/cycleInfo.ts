@@ -30,6 +30,20 @@ export class CycleInfo {
         return [dexes, paths]
     }
 
+    get isCycleInOneExchange(): boolean {
+        let exchange = <PairInfo>(PairInfo.pairs[this.pairs[0]]).dex
+        let isOneExchnage = true
+        return this.pairs.reduce<boolean>((prev, pairName) => {
+            const pair = PairInfo.pairs[pairName]
+
+
+            const pred = prev && exchange == pair.dex
+            exchange = pair.dex
+
+            return pred
+        }, isOneExchnage)
+    }
+
     get isValidCycle(): boolean {
         let addressIn = this.initialToken.address
         let isValid = true

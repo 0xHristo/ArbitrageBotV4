@@ -1,40 +1,45 @@
-import { BigNumber } from "ethers"
-import { ExchangeExtractorV4 } from "../../typechain"
+import { BigNumber, Signer } from "ethers"
+import { ExchangeExtractorV4, IUniswapV2Router02, IUniswapV2Router02__factory } from "../../typechain"
+import { PairInfo, Token } from "./pairInfo"
+import { Action } from "../historic_data"
+import { ExchangeExtractor } from "../../tokens/ExchangeExtractor"
 
 export class CycleBatch {
-    readonly inputDexes: string[][]
-    readonly inputPaths: string[][][]
-    readonly inputAmountIn: BigNumber[]
+    readonly dex: string
+    readonly pairs: PairInfo[]
+    readonly router: IUniswapV2Router02
+    readonly amoutIn: BigNumber
+    readonly path: string[]
 
-    constructor(inputDexes: string[][], inputPaths: string[][][], inputAmountIn: BigNumber[]) {
-        this.inputDexes = inputDexes
-        this.inputPaths = inputPaths
-        this.inputAmountIn = inputAmountIn
+    constructor(initialPair: PairInfo, deployer: Signer, amoutIn: BigNumber, token0: Token) {
+        this.dex = initialPair.dex
+        this.pairs = [initialPair]
+        this.router = IUniswapV2Router02__factory.connect(this.dex, deployer)
+        this.amoutIn = amoutIn
+        this.path = [token0.address, initialPair.other(token0.address).address]
     }
 
-    async filter(exchangeExtractor: ExchangeExtractorV4): Promise<{ dexes: string[][], paths: string[][][], amountIns: BigNumber[] }> {
-        let r: { dexes: string[][], paths: string[][][], amountIns: BigNumber[] } = {
-            dexes: [],
-            paths: [],
-            amountIns: []
-        }
-        try {
+    add = (pair: PairInfo, token0: Token) => {
+        this.pairs.push(pair)
+        this.path.push(pair.other(token0.address).address)
+    }
 
-            const amountOuts: BigNumber[] = await exchangeExtractor.callStatic.estimateSwaps(this.inputDexes, this.inputPaths, this.inputAmountIn, {
-                gasLimit: 300000000
-            })
+    async action(): Promise<Action> {
+        const exchangeTransaction = await this.router.populateTransaction.swapExactTokensForTokens(
+            this.amoutIn,
+            0,
+            this.path,
+            ExchangeExtractor,
+            Date.now() + 10000
+        )
 
-            amountOuts.forEach((amountOut: BigNumber, i: number) => {
-                if (amountOut.gt(this.inputAmountIn[i])) {
-                    r.dexes.push(this.inputDexes[i])
-                    r.paths.push(this.inputPaths[i])
-                    r.amountIns.push(this.inputAmountIn[i])
-                }
-            })
-        } catch (e: any) {
-            console.log(e.stack)
-            console.log("kura mi qnko")
+        return <Action>{
+            data: exchangeTransaction!.data,
+            address: this.dex
         }
-        return r
+    }
+
+    get amountOut(): BigNumber {
+        return this.pairs.reduce<BigNumber>((amoutIn, pair, i) => pair.amountOut(this.path[i], amoutIn), this.amoutIn)
     }
 }

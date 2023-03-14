@@ -48,7 +48,7 @@ export class NetworkInfo {
             const pair = new PairInfo({
                 token1: currentToken,
                 token2: this.initialToken,
-                dex:""
+                dex: ""
             })
             const currentTokenMarket = this.marketsByPair.get(pair.nameWithoutDex)
             return currentTokenMarket?.map(pair => {
@@ -62,15 +62,15 @@ export class NetworkInfo {
             const currentTokenMarket = this.markets.get(currentToken.address)
             if (currentTokenMarket !== undefined) {
                 return currentTokenMarket.pairs
-                .filter(pair => pair.other(currentToken.address).address != prevToken.address)
-                .map(pair => {
-                    const nextToken = pair.other(currentToken.address)
-                    return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name])
-                })
-                .reduce<CycleInfo[]>((prev: CycleInfo[], current: CycleInfo[]) => [...prev, ...current], [])
+                    .filter(pair => pair.other(currentToken.address).address != prevToken.address)
+                    .map(pair => {
+                        const nextToken = pair.other(currentToken.address)
+                        return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name])
+                    })
+                    .reduce<CycleInfo[]>((prev: CycleInfo[], current: CycleInfo[]) => [...prev, ...current], [])
             }
         }
-        
+
         return []
     }
 

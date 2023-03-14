@@ -13,9 +13,9 @@ import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
 import { Dexes } from "../tokens/Dexes"
 
-const initialToken = BaseAssets.WMATIC
-const amountIn = (BigNumber.from(10).pow(18)).mul(1)
-const exchangesCount = 4
+export const initialToken = BaseAssets.WMATIC
+export const amountIn = (BigNumber.from(10).pow(17)).mul(1)
+const exchangesCount = 1
 const tokensInCycle = 7
 
 const tokensWithTransactionAbove = 0
@@ -24,13 +24,13 @@ const shouldParse = false
 const shouldApproveExchangeExtractorToTokens = false
 const shouldRegenerateCycles = false
 
-const enablePrint = false
+const enablePrint = true
 
 export const log = console.log
 
 console.log = (...any) => {
     if (enablePrint) {
-        log(any)
+        log(...any)
     }
 }
 
@@ -308,11 +308,11 @@ const main = async () => {
 
         const approvesPromises: Promise<Action>[] = Object.keys(tokensMap).filter(a => tokensMap[a] > tokensWithTransactionAbove && tokensMap[a] < 20 && blackListedTokens.indexOf(a) == -1).map<Promise<Action>>(async token => {
             const tnx = await wmatic.populateTransaction.approve(
-                Dexes.sushiswap,
+                Dexes.quickswap,
                 BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
 
             return {
-                address: token,
+                address: "0x047fd3b3d2366f9babe105ade4598e263d6c699c",
                 data: tnx.data!
             }
         })
@@ -320,15 +320,15 @@ const main = async () => {
         const approves = await Promise.all(approvesPromises)
 
         const tnx2 = await exchangeExtractor.run(
-            approves.map<string>((action: Action): string => action.address),
-            approves.map<string>((action: Action): string => action.data),
+            [approves.map<string>((action: Action): string => action.address)[0]],
+            [approves.map<string>((action: Action): string => action.data)[0]],
             {
-                gasLimit: 10000000,
+                gasLimit: 1000000,
                 // gasPrice: 30000096308436836
                 maxPriorityFeePerGas: getGweiEthers(
-                    networkGasPrice.asap.maxPriorityFeePerGas
+                    networkGasPrice.average.maxPriorityFeePerGas
                 ),
-                maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
+                maxFeePerGas: getGweiEthers(networkGasPrice.average.maxFeePerGas),
             }
         )
 
@@ -407,7 +407,10 @@ const main = async () => {
 
         cyclesToExploit.forEach(cycle => {
             cycle[2].amountOut(amountIn, true)
+            console.log("Is in one dex", cycle[2].isCycleInOneExchange)
         })
+
+
 
         const actionPromises = cyclesToExploit.map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
             let amountInExchange = amountIn
@@ -444,7 +447,7 @@ const main = async () => {
         const transferBackAmount = cyclesToExploit
             .reduce<BigNumber>((profit, [amountOut]) => profit.add(amountOut.sub(amountIn)), BigNumber.from(0)).add(amountIn)
 
-        if (transferBackAmount.lt(amountIn.add(amountIn.div(10)))) {
+        if (transferBackAmount.lt(amountIn.add(amountIn.div(2)))) {
             log("Potential profit", transferBackAmount.toString(), "from", cyclesToExploit.length, "cycles")
             fs.appendFile(`exchanges/profits_wmatic.csv`, `${transferBackAmount.toString()},\n`, { encoding: 'utf-8' }, (e) => { })
             return
@@ -485,9 +488,9 @@ const main = async () => {
                     gasLimit: 3000000,
                     // gasPrice: 30000096308436836
                     maxPriorityFeePerGas: getGweiEthers(
-                        networkGasPrice.high.maxPriorityFeePerGas
+                        networkGasPrice.asap.maxPriorityFeePerGas
                     ),
-                    maxFeePerGas: getGweiEthers(networkGasPrice.high.maxFeePerGas),
+                    maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
                 }
             )
             log(tnx.hash)

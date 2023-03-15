@@ -15,14 +15,14 @@ import { Dexes } from "../tokens/Dexes"
 
 export const initialToken = BaseAssets.WMATIC
 export const amountIn = (BigNumber.from(10).pow(17)).mul(1)
-const exchangesCount = 1
-const tokensInCycle = 7
+const exchangesCount = 10
+const tokensInCycle = 5
 
 const tokensWithTransactionAbove = 0
 
 const shouldParse = false
 const shouldApproveExchangeExtractorToTokens = false
-const shouldRegenerateCycles = false
+const shouldRegenerateCycles = true
 
 const enablePrint = true
 
@@ -382,16 +382,14 @@ const main = async () => {
 
             let hasUsedPairs: boolean = false
             cycle.pairs.forEach(pairName => {
-                const pair = PairInfo.pairs[pairName]
-                hasUsedPairs = hasUsedPairs || (usedPairs[pair.name] == undefined ? false : true)
+                hasUsedPairs = hasUsedPairs || (usedPairs[pairName] == undefined ? false : true)
             })
 
             if (!hasUsedPairs) {
                 cyclesToExploit.push(result[i])
 
                 cycle.pairs.forEach(pairName => {
-                    const pair = PairInfo.pairs[pairName]
-                    usedPairs[pair.name] = true
+                    usedPairs[pairName] = true
                 })
             }
 
@@ -412,55 +410,58 @@ const main = async () => {
 
 
 
-        const actionPromises = cyclesToExploit.map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
-            let amountInExchange = amountIn
-            const actions: Action[] = []
+        // const actionPromises = cyclesToExploit.map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
+        //     let amountInExchange = amountIn
+        //     const actions: Action[] = []
 
-            const path = [cycle.input[1][0][0]]
+        //     const path = [cycle.input[1][0][0]]
 
-            for (let i = 0; i < cycle.pairs.length; i++) {
-                const pairName = cycle.pairs[i]
-                const pair = PairInfo.pairs[pairName]
+        //     for (let i = 0; i < cycle.pairs.length; i++) {
+        //         const pairName = cycle.pairs[i]
+        //         const pair = PairInfo.pairs[pairName]
 
-                // path.push(cycle.input[1][i][1])
-                const exchange = IUniswapV2Router02__factory.connect(pair.dex, deployer)
+        //         // path.push(cycle.input[1][i][1])
+        //         const exchange = IUniswapV2Router02__factory.connect(pair.dex, deployer)
 
-                const exchangeTransaction = await exchange.populateTransaction.swapExactTokensForTokens(
-                    amountInExchange,
-                    0,
-                    cycle.input[1][i],
-                    ExchangeExtractor,
-                    Date.now() + 10000
-                )
+        //         const exchangeTransaction = await exchange.populateTransaction.swapExactTokensForTokens(
+        //             amountInExchange,
+        //             0,
+        //             cycle.input[1][i],
+        //             ExchangeExtractor,
+        //             Date.now() + 10000
+        //         )
 
-                amountInExchange = pair.amountOut(cycle.input[1][i][0], amountInExchange).sub(1)
+        //         amountInExchange = pair.amountOut(cycle.input[1][i][0], amountInExchange).sub(1)
 
-                actions.push({
-                    address: exchange.address,
-                    data: exchangeTransaction.data!
-                })
-            }
+        //         actions.push({
+        //             address: exchange.address,
+        //             data: exchangeTransaction.data!
+        //         })
+        //     }
 
-            return [...actions]
+        //     return [...actions]
+        // })
+
+        const actionPromises = cyclesToExploit.map(([amountOut, isProfitable, cycle]): Promise<Action[]> => {
+            return cycle.action(IUniswapV2Router02__factory.connect(cycle.input[0][1], deployer))
         })
 
         const transferBackAmount = cyclesToExploit
             .reduce<BigNumber>((profit, [amountOut]) => profit.add(amountOut.sub(amountIn)), BigNumber.from(0)).add(amountIn)
 
+
+        const actions = await Promise.all(actionPromises)
         if (transferBackAmount.lt(amountIn.add(amountIn.div(2)))) {
             log("Potential profit", transferBackAmount.toString(), "from", cyclesToExploit.length, "cycles")
             fs.appendFile(`exchanges/profits_wmatic.csv`, `${transferBackAmount.toString()},\n`, { encoding: 'utf-8' }, (e) => { })
-            return
+            // return
         }
-
-        const actions = await Promise.all(actionPromises)
-
         const finalActions: Action[] = [
             // {
             //     address: wmatic.address,
             //     data: takeFunds.data!
             // },
-            ...actions.reduce<Action[]>((prev, curent) => {
+            ...actions.reduce<Action[]>((prev,curent) => {
                 return [...prev, ...curent]
             }, []),
             // {
@@ -472,7 +473,6 @@ const main = async () => {
         const addresses: string[] = finalActions.map<string>((action: Action): string => action.address)
 
         const datas: string[] = finalActions.map<string>((action: Action): string => action.data)
-        console.log(cyclesToExploit.length)
         console.log(transferBackAmount)
         var time2 = new Date().getTime()
         console.log(`Elapsed time: ${time2.valueOf() - time1.valueOf()}`)

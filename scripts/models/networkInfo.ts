@@ -4,6 +4,7 @@ import { Market } from "./marketInfo"
 import { PairInfo, Token } from "./pairInfo"
 import { Pair } from "../historic_data"
 import { Dexes } from "../../tokens/Dexes"
+import { use } from "chai"
 
 export class NetworkInfo {
     public readonly initialToken: Token
@@ -43,7 +44,7 @@ export class NetworkInfo {
         console.log(this.marketsByPair)
     }
 
-    _createCycles = (currentToken: Token, prevToken: Token, remainingLength: number, pairs: string[]): CycleInfo[] => {
+    _createCycles = (currentToken: Token, prevToken: Token, remainingLength: number, pairs: string[], used: any): CycleInfo[] => {
         if (remainingLength == 1) {
             const pair = new PairInfo({
                 token1: currentToken,
@@ -51,7 +52,9 @@ export class NetworkInfo {
                 dex: ""
             })
             const currentTokenMarket = this.marketsByPair.get(pair.nameWithoutDex)
-            return currentTokenMarket?.map(pair => {
+            return currentTokenMarket
+            ?.filter(pair => used[pair.name] == undefined)
+            .map(pair => {
                 return new CycleInfo(this.initialToken,
                     [
                         ...pairs,
@@ -62,10 +65,12 @@ export class NetworkInfo {
             const currentTokenMarket = this.markets.get(currentToken.address)
             if (currentTokenMarket !== undefined) {
                 return currentTokenMarket.pairs
-                    .filter(pair => pair.other(currentToken.address).address != prevToken.address)
+                    .filter(pair => {
+                        return pair.other(currentToken.address).address != prevToken.address && used[pair.name] == undefined
+                    })
                     .map(pair => {
                         const nextToken = pair.other(currentToken.address)
-                        return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name])
+                        return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name], {...used, [pair.name]: true})
                     })
                     .reduce<CycleInfo[]>((prev: CycleInfo[], current: CycleInfo[]) => [...prev, ...current], [])
             }
@@ -75,7 +80,7 @@ export class NetworkInfo {
     }
 
     createCyclesWithLength = (length: number): CycleInfo[] => {
-        return this._createCycles(this.initialToken, this.initialToken, length, [])
+        return this._createCycles(this.initialToken, this.initialToken, length, [], {})
     }
 
     createCycles = (): CycleInfo[] => {

@@ -13,9 +13,9 @@ import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
 import { Dexes } from "../tokens/Dexes"
 
-export const initialToken = BaseAssets.WMATIC
-export const amountIn = (BigNumber.from(10).pow(17)).mul(1)
-const exchangesCount = 10
+export const initialToken = BaseAssets.USDT
+export const amountIn = (BigNumber.from(10).pow(5)).mul(12)
+const exchangesCount = 4
 const tokensInCycle = 5
 
 const tokensWithTransactionAbove = 0

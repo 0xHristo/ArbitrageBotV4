@@ -1,8 +1,8 @@
 import { BigNumber, Signer } from "ethers"
 import { ExchangeExtractorV4, IUniswapV2Router02, IUniswapV2Router02__factory } from "../../typechain"
 import { PairInfo, Token } from "./pairInfo"
-import { Action } from "../historic_data"
 import { ExchangeExtractor } from "../../tokens/ExchangeExtractor"
+import { Action } from "./actions"
 
 export class CycleBatch {
     readonly dex: string

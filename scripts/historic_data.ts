@@ -1,6 +1,6 @@
 import fs, { read } from "fs"
 import { PairInfo, Path, Token } from "./models/pairInfo"
-import IUniswapV2Router02Artifacts from '../artifacts/contracts/ExchangeExtractorV4.sol/IUniswapV2Router01.json'
+import IUniswapV2Router02Artifacts from '../artifacts/contracts/ExchangeExtractorV4.sol/IUniswapV2Router02.json'
 import { ethers } from "hardhat"
 import { ExchangeExtractorV4__factory } from "../typechain/factories/ExchangeExtractorV4__factory"
 import { ExchangeExtractor } from "../tokens/ExchangeExtractor"
@@ -8,21 +8,20 @@ import { BigNumber } from "ethers"
 import { BaseAssets } from "../tokens/BaseAssets"
 import { NetworkInfo } from "./models/networkInfo"
 import { CycleInfo } from "./models/cycleInfo"
-import { IERC20__factory, ISafeERC20__factory, IUniswapV2Router02__factory } from "../typechain"
+import { IERC20__factory, IUniswapV2Router02__factory } from "../typechain"
 import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
 import { Dexes } from "../tokens/Dexes"
+import { getGweiEthers } from "./helpers"
+import { amountIn, blackListedTokens, initialToken, tokensWithTransactionAbove } from "./constants"
+import { Action } from "./models/actions"
 
-export const initialToken = BaseAssets.USDT
-export const amountIn = (BigNumber.from(10).pow(5)).mul(12)
-const exchangesCount = 4
+const exchangesCount = 2
 const tokensInCycle = 5
-
-const tokensWithTransactionAbove = 0
 
 const shouldParse = false
 const shouldApproveExchangeExtractorToTokens = false
-const shouldRegenerateCycles = true
+const shouldRegenerateCycles = false
 
 const enablePrint = true
 
@@ -35,21 +34,8 @@ console.log = (...any) => {
 }
 
 
-const blackListedTokens = [
-    "0xAEe0ffb690B37449B7f1C49B199E1E3ec6084490",
-    "0xA9536B9c75A9E0faE3B56a96AC8EdF76AbC91978",
-    "0xA96D47c621a8316d4F9539E3B38180C7067e84CA",
-    "0x01E0d17a533E5930A349C2BB71304F04F20AB12B",
-    "0x4634ea4BA6Cb003E59C15a04422a95a9C11BE245",
-    "0x8440178087C4fd348D43d0205F4574e0348a06F0",
-    "0x1B43b97094Aa3c6Cc678eDb9e28Ac67dAaa7Cc64"
-]
-
-function getGweiEthers(gweiAmount: number): BigNumber {
-    return ethers.utils.parseUnits(Math.ceil(gweiAmount).toString(), "gwei")
-}
 // let ArbitrageBotV4: ExchangeExtractorV4
-const IUniswapV2Router02 = new ethers.utils.Interface(IUniswapV2Router02Artifacts.abi)
+const IUniswapV2Router02 = new ethers.utils.Interface(IUniswapV2Router02__factory.abi)
 const readHistoricExchangesTransactions = async (): Promise<string[]> => {
     try {
         const paths = await fs.promises.readFile(
@@ -66,11 +52,6 @@ const readHistoricExchangesTransactions = async (): Promise<string[]> => {
     }
 }
 
-interface ExchangeTransaction {
-    path: Path
-    dex: string
-}
-
 const parseTransactionData = (row: string): Pair | null => {
     try {
         const entries = row.split(',')
@@ -84,6 +65,7 @@ const parseTransactionData = (row: string): Pair | null => {
 
         return new Pair(path.from, path.to, dex)
     } catch (e) {
+        console.log(row.split(',')[0].slice(0, 10))
         console.log(e)
         return null
     }
@@ -121,7 +103,7 @@ interface PairsWithReserves {
 const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigNumber, boolean, CycleInfo][]> => {
     var time1 = new Date().getTime()
     const [deployer] = await ethers.getSigners()
-    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach("0x80D8c75BC1af9C9F1b001DF9bD6a6405F91CD06e")
+    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach("0xc9daAb52Bf1fBBA3b0Ec59F919345644581Ce931")
     console.log(5)
 
     const reserveMap: any = {}
@@ -132,22 +114,21 @@ const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigN
 
         const pairData = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
 
-        return pairData.map<PairInfo>(([token1, token2, reserve1, reserve2]) => {
-
+        return pairData[0].map<PairInfo>(([token1, token2, reserve1, reserve2]) => {            
             /// Shadow sorting of token1 & token2 
             const pairInfo = new PairInfo({
                 token1: new Token(token1, 18),
                 token2: new Token(token2, 18),
-                dex: exchange,
+                dex: pairData[1],
             })
 
-            if (token1 == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" && token2 == "0xc2132D05D31c914a87C6611C10748AEb04B58e8F") {
-                console.log(`${token1} ${token2} ${exchange}`)
-                console.log([reserve1, reserve2])
+            // if (token1 == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" && token2 == "0xc2132D05D31c914a87C6611C10748AEb04B58e8F") {
+            //     console.log(`${token1} ${token2} ${exchange}`)
+            //     console.log([reserve1, reserve2])
 
-                console.log(`${pairInfo.token1.address} ${pairInfo.token2.address} ${pairInfo.dex}`)
-                console.log([reserve1, reserve2])
-            }
+            //     console.log(`${pairInfo.token1.address} ${pairInfo.token2.address} ${pairInfo.dex}`)
+            //     console.log([reserve1, reserve2])
+            // }
 
             pairsMap[pairInfo.name] = pairInfo
             reserveMap[pairInfo.name] = [reserve1, reserve2]
@@ -194,11 +175,6 @@ const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigN
 
 
     return filteredCycles
-}
-
-export interface Action {
-    address: string,
-    data: string
 }
 
 const main = async () => {
@@ -381,11 +357,15 @@ const main = async () => {
             const cycle = result[i][2]
 
             let hasUsedPairs: boolean = false
+            let localyUsedPairs: boolean = false
+            let localyUsed: any = {}
             cycle.pairs.forEach(pairName => {
+                localyUsedPairs = localyUsedPairs || (localyUsed[pairName] == undefined ? false : true)
+                localyUsed[pairName] = true
                 hasUsedPairs = hasUsedPairs || (usedPairs[pairName] == undefined ? false : true)
             })
 
-            if (!hasUsedPairs) {
+            if (!hasUsedPairs && !localyUsedPairs) {
                 cyclesToExploit.push(result[i])
 
                 cycle.pairs.forEach(pairName => {
@@ -408,8 +388,9 @@ const main = async () => {
             console.log("Is in one dex", cycle[2].isCycleInOneExchange)
         })
 
-
-
+        console.log("----------")
+        console.log(await cyclesToExploit[0][2].action(IUniswapV2Router02__factory.connect(cyclesToExploit[0][2].input[0][1], deployer)))
+        console.log("----------")
         // const actionPromises = cyclesToExploit.map(async ([amountOut, isProfitable, cycle], i): Promise<Action[]> => {
         //     let amountInExchange = amountIn
         //     const actions: Action[] = []
@@ -461,7 +442,7 @@ const main = async () => {
             //     address: wmatic.address,
             //     data: takeFunds.data!
             // },
-            ...actions.reduce<Action[]>((prev,curent) => {
+            ...actions.reduce<Action[]>((prev, curent) => {
                 return [...prev, ...curent]
             }, []),
             // {
@@ -473,10 +454,10 @@ const main = async () => {
         const addresses: string[] = finalActions.map<string>((action: Action): string => action.address)
 
         const datas: string[] = finalActions.map<string>((action: Action): string => action.data)
-        console.log(transferBackAmount)
+        // console.log(transferBackAmount)
         var time2 = new Date().getTime()
         console.log(`Elapsed time: ${time2.valueOf() - time1.valueOf()}`)
-        // return
+        return
 
         try {
             const tnx = await exchangeExtractor.runSimple(
@@ -488,9 +469,9 @@ const main = async () => {
                     gasLimit: 3000000,
                     // gasPrice: 30000096308436836
                     maxPriorityFeePerGas: getGweiEthers(
-                        networkGasPrice.asap.maxPriorityFeePerGas
+                        networkGasPrice.low.maxPriorityFeePerGas
                     ),
-                    maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
+                    maxFeePerGas: getGweiEthers(networkGasPrice.low.maxFeePerGas),
                 }
             )
             log(tnx.hash)

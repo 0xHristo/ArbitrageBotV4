@@ -2,7 +2,7 @@ import fs from "fs"
 import { ethers } from "hardhat"
 import { ExchangeExtractorV4__factory } from "../typechain/factories/ExchangeExtractorV4__factory"
 import { ExchangeExtractor } from "../tokens/ExchangeExtractor"
-import { IERC20, IERC20__factory, ISafeERC20__factory } from "../typechain"
+import { IERC20, IERC20__factory } from "../typechain"
 
 const main = async () => {
     const exchangePairsFiltered = JSON.parse(await fs.promises.readFile(`exchanges/historic_pairs_filtered.log`, { encoding: "utf-8" }))

@@ -3,16 +3,20 @@
 /* eslint-disable */
 export type { ExchangeExtractorV4 } from "./ExchangeExtractorV4";
 export type { IERC20 } from "./IERC20";
-export type { ISafeERC20 } from "./ISafeERC20";
 export type { IUniswapV2Factory } from "./IUniswapV2Factory";
 export type { IUniswapV2Pair } from "./IUniswapV2Pair";
-export type { IUniswapV2Router01 } from "./IUniswapV2Router01";
 export type { IUniswapV2Router02 } from "./IUniswapV2Router02";
+export type { IERC20Uniswap } from "./IERC20Uniswap";
+export type { IUniswapV2Router01 } from "./IUniswapV2Router01";
+export type { IWETH } from "./IWETH";
+export type { UniswapV2Router02 } from "./UniswapV2Router02";
 
 export { ExchangeExtractorV4__factory } from "./factories/ExchangeExtractorV4__factory";
 export { IERC20__factory } from "./factories/IERC20__factory";
-export { ISafeERC20__factory } from "./factories/ISafeERC20__factory";
 export { IUniswapV2Factory__factory } from "./factories/IUniswapV2Factory__factory";
 export { IUniswapV2Pair__factory } from "./factories/IUniswapV2Pair__factory";
-export { IUniswapV2Router01__factory } from "./factories/IUniswapV2Router01__factory";
 export { IUniswapV2Router02__factory } from "./factories/IUniswapV2Router02__factory";
+export { IERC20Uniswap__factory } from "./factories/IERC20Uniswap__factory";
+export { IUniswapV2Router01__factory } from "./factories/IUniswapV2Router01__factory";
+export { IWETH__factory } from "./factories/IWETH__factory";
+export { UniswapV2Router02__factory } from "./factories/UniswapV2Router02__factory";

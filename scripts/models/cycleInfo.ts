@@ -1,8 +1,9 @@
 import { BigNumber } from "ethers"
 import { ExchangeExtractorV4, IUniswapV2Factory, IUniswapV2Pair__factory, IUniswapV2Router02 } from "../../typechain"
 import { PairInfo, Token } from "./pairInfo"
-import { Action, amountIn } from "../historic_data"
 import { ExchangeExtractor } from "../../tokens/ExchangeExtractor"
+import { amountIn } from "../constants"
+import { Action } from "./actions"
 
 export class CycleInfo {
     readonly pairs: string[] = []

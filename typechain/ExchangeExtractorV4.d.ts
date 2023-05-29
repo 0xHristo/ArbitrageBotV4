@@ -21,36 +21,11 @@ import type { TypedEventFilter, TypedEvent, TypedListener } from "./common";
 
 interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
   functions: {
-    "arbitrage(address[],address[][],uint256,uint256)": FunctionFragment;
-    "arbitrages(address[][],address[][][],uint256,uint256)": FunctionFragment;
-    "estimateSwap(address[],address[][],uint256)": FunctionFragment;
-    "estimateSwaps(address[][],address[][][],uint256[])": FunctionFragment;
-    "extract(address,uint256,uint256)": FunctionFragment;
     "getPairReserves(address,address[],address[])": FunctionFragment;
     "run(address[],bytes[])": FunctionFragment;
     "runSimple(address[],bytes[],address,uint256)": FunctionFragment;
   };
 
-  encodeFunctionData(
-    functionFragment: "arbitrage",
-    values: [string[], string[][], BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "arbitrages",
-    values: [string[][], string[][][], BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "estimateSwap",
-    values: [string[], string[][], BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "estimateSwaps",
-    values: [string[][], string[][][], BigNumberish[]]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "extract",
-    values: [string, BigNumberish, BigNumberish]
-  ): string;
   encodeFunctionData(
     functionFragment: "getPairReserves",
     values: [string, string[], string[]]
@@ -64,17 +39,6 @@ interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
     values: [string[], BytesLike[], string, BigNumberish]
   ): string;
 
-  decodeFunctionResult(functionFragment: "arbitrage", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "arbitrages", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "estimateSwap",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "estimateSwaps",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "extract", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getPairReserves",
     data: BytesLike
@@ -129,45 +93,6 @@ export class ExchangeExtractorV4 extends BaseContract {
   interface: ExchangeExtractorV4Interface;
 
   functions: {
-    arbitrage(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    arbitrages(
-      routers: string[][],
-      paths: string[][][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    estimateSwap(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<[BigNumber]>;
-
-    estimateSwaps(
-      routers: string[][],
-      paths: string[][][],
-      amountsIn: BigNumberish[],
-      overrides?: CallOverrides
-    ): Promise<[BigNumber[]]>;
-
-    extract(
-      router: string,
-      _start: BigNumberish,
-      _stop: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<
-      [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
-    >;
-
     getPairReserves(
       router: string,
       tokanAs: string[],
@@ -180,7 +105,8 @@ export class ExchangeExtractorV4 extends BaseContract {
           token2: string;
           reserve1: BigNumber;
           reserve2: BigNumber;
-        })[]
+        })[],
+        string
       ]
     >;
 
@@ -199,57 +125,21 @@ export class ExchangeExtractorV4 extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
-  arbitrage(
-    routers: string[],
-    paths: string[][],
-    amountIn: BigNumberish,
-    deadline: BigNumberish,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  arbitrages(
-    routers: string[][],
-    paths: string[][][],
-    amountIn: BigNumberish,
-    deadline: BigNumberish,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  estimateSwap(
-    routers: string[],
-    paths: string[][],
-    amountIn: BigNumberish,
-    overrides?: CallOverrides
-  ): Promise<BigNumber>;
-
-  estimateSwaps(
-    routers: string[][],
-    paths: string[][][],
-    amountsIn: BigNumberish[],
-    overrides?: CallOverrides
-  ): Promise<BigNumber[]>;
-
-  extract(
-    router: string,
-    _start: BigNumberish,
-    _stop: BigNumberish,
-    overrides?: CallOverrides
-  ): Promise<
-    [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
-  >;
-
   getPairReserves(
     router: string,
     tokanAs: string[],
     tokenBs: string[],
     overrides?: CallOverrides
   ): Promise<
-    ([string, string, BigNumber, BigNumber] & {
-      token1: string;
-      token2: string;
-      reserve1: BigNumber;
-      reserve2: BigNumber;
-    })[]
+    [
+      ([string, string, BigNumber, BigNumber] & {
+        token1: string;
+        token2: string;
+        reserve1: BigNumber;
+        reserve2: BigNumber;
+      })[],
+      string
+    ]
   >;
 
   run(
@@ -267,57 +157,21 @@ export class ExchangeExtractorV4 extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
-    arbitrage(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<boolean>;
-
-    arbitrages(
-      routers: string[][],
-      paths: string[][][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<boolean>;
-
-    estimateSwap(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    estimateSwaps(
-      routers: string[][],
-      paths: string[][][],
-      amountsIn: BigNumberish[],
-      overrides?: CallOverrides
-    ): Promise<BigNumber[]>;
-
-    extract(
-      router: string,
-      _start: BigNumberish,
-      _stop: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<
-      [[string, string, string][], [number, number][], [BigNumber, BigNumber][]]
-    >;
-
     getPairReserves(
       router: string,
       tokanAs: string[],
       tokenBs: string[],
       overrides?: CallOverrides
     ): Promise<
-      ([string, string, BigNumber, BigNumber] & {
-        token1: string;
-        token2: string;
-        reserve1: BigNumber;
-        reserve2: BigNumber;
-      })[]
+      [
+        ([string, string, BigNumber, BigNumber] & {
+          token1: string;
+          token2: string;
+          reserve1: BigNumber;
+          reserve2: BigNumber;
+        })[],
+        string
+      ]
     >;
 
     run(
@@ -338,43 +192,6 @@ export class ExchangeExtractorV4 extends BaseContract {
   filters: {};
 
   estimateGas: {
-    arbitrage(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    arbitrages(
-      routers: string[][],
-      paths: string[][][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    estimateSwap(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    estimateSwaps(
-      routers: string[][],
-      paths: string[][][],
-      amountsIn: BigNumberish[],
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    extract(
-      router: string,
-      _start: BigNumberish,
-      _stop: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     getPairReserves(
       router: string,
       tokanAs: string[],
@@ -398,43 +215,6 @@ export class ExchangeExtractorV4 extends BaseContract {
   };
 
   populateTransaction: {
-    arbitrage(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    arbitrages(
-      routers: string[][],
-      paths: string[][][],
-      amountIn: BigNumberish,
-      deadline: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    estimateSwap(
-      routers: string[],
-      paths: string[][],
-      amountIn: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    estimateSwaps(
-      routers: string[][],
-      paths: string[][][],
-      amountsIn: BigNumberish[],
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    extract(
-      router: string,
-      _start: BigNumberish,
-      _stop: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     getPairReserves(
       router: string,
       tokanAs: string[],

@@ -41,10 +41,10 @@ export class NetworkInfo {
             this.tokens.add(pair.token2)
 
         })
-        console.log(this.marketsByPair)
+        // console.log(this.marketsByPair)
     }
 
-    _createCycles = (currentToken: Token, prevToken: Token, remainingLength: number, pairs: string[]): CycleInfo[] => {
+    _createCycles = (currentToken: Token, prevPairs: string[], remainingLength: number, pairs: string[]): CycleInfo[] => {
         if (remainingLength == 1) {
             const pair = new PairInfo({
                 token1: currentToken,
@@ -53,23 +53,27 @@ export class NetworkInfo {
             })
             const currentTokenMarket = this.marketsByPair.get(pair.nameWithoutDex)
             return currentTokenMarket
-            ?.map(pair => {
-                return new CycleInfo(this.initialToken,
-                    [
-                        ...pairs,
-                        pair.name
-                    ])
-            }) ?? []
+                ?.filter(pair => {
+                    return prevPairs.indexOf(pair.name) == -1
+                })
+                .map(pair => {
+                    return new CycleInfo(this.initialToken,
+                        [
+                            ...pairs,
+                            pair.name
+                        ])
+                }) ?? []
         } else if (remainingLength > 1) {
             const currentTokenMarket = this.markets.get(currentToken.address)
             if (currentTokenMarket !== undefined) {
                 return currentTokenMarket.pairs
                     .filter(pair => {
-                        return pair.other(currentToken.address).address != prevToken.address
+                        return prevPairs.indexOf(pair.name) == -1
                     })
                     .map(pair => {
                         const nextToken = pair.other(currentToken.address)
-                        return this._createCycles(nextToken, currentToken, remainingLength - 1, [...pairs, pair.name])
+
+                        return this._createCycles(nextToken, [pair.name, ...prevPairs], remainingLength - 1, [...pairs, pair.name])
                     })
                     .reduce<CycleInfo[]>((prev: CycleInfo[], current: CycleInfo[]) => [...prev, ...current], [])
             }
@@ -79,7 +83,7 @@ export class NetworkInfo {
     }
 
     createCyclesWithLength = (length: number): CycleInfo[] => {
-        return this._createCycles(this.initialToken, this.initialToken, length, [])
+        return this._createCycles(this.initialToken, [], length, [])
     }
 
     createCycles = (): CycleInfo[] => {

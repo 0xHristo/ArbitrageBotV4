@@ -14,8 +14,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY || ""
 
 const main = async () => {
     let base = new ethers.providers.JsonRpcProvider(
-        { url: "https://polygon-mainnet.g.alchemy.com/v2/B2qBXV5FEEiyRD_PH5SOP1TAvQ_cNP64" },
-        137)
+        { url: "https://polygon-mainnet.g.alchemy.com/v2/B2qBXV5FEEiyRD_PH5SOP1TAvQ_cNP64" })
     await base.ready
     const wallet = new ethers.Wallet(PRIVATE_KEY, base)
     let provider = new FlashbotsBundleProvider(
@@ -29,19 +28,19 @@ const main = async () => {
     console.log(nonce)
     const networkGasPrice: GasPrice = await getNetworkGasPrice("polygon")
 
-    const wmatic = IERC20__factory.connect(BaseAssets.WETH.address, wallet)
+    const wmatic = IERC20__factory.connect(BaseAssets.WMATIC.address, wallet)
 
 
-   const t = await wmatic.approve(
-        ExchangeExtractor,
-        BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), {
-        type: 2,
-        maxPriorityFeePerGas: getGweiEthers(
-            networkGasPrice.asap.maxPriorityFeePerGas
-        ),
-        maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
-    })
-    console.log(t.hash)
+//    const t = await wmatic.approve(
+//         ExchangeExtractor,
+//         BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), {
+//         type: 2,
+//         maxPriorityFeePerGas: getGweiEthers(
+//             networkGasPrice.asap.maxPriorityFeePerGas
+//         ),
+//         maxFeePerGas: getGweiEthers(networkGasPrice.asap.maxFeePerGas),
+//     })
+//     console.log(t.hash)
     const blk = await ethers.provider.getBlockNumber()
     console.log(networkGasPrice.asap)
     try {
@@ -52,6 +51,10 @@ const main = async () => {
                     ExchangeExtractor,
                     BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), {
                     type: 2,
+                    customData: {
+                        "chainId": 137,
+                        "chainID": 137
+                    },
                     maxPriorityFeePerGas: getGweiEthers(
                         networkGasPrice.asap.maxPriorityFeePerGas
                     ),

@@ -62,10 +62,19 @@ const config: HardhatUserConfig = {
     polygon_mainnet: createTestnetConfig("polygon-mainnet")
   },
   solidity: {
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000000,
+      },
+    },
     compilers: [
       {
         version: "0.8.0",
       },
+      {
+        version: "0.6.12"
+      }
     ],
   },
   etherscan: {

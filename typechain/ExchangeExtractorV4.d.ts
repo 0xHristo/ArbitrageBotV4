@@ -21,30 +21,27 @@ import type { TypedEventFilter, TypedEvent, TypedListener } from "./common";
 
 interface ExchangeExtractorV4Interface extends ethers.utils.Interface {
   functions: {
-    "getPairReserves(address,address[],address[])": FunctionFragment;
+    "getReserves(address[])": FunctionFragment;
+    "myOwner()": FunctionFragment;
     "run(address[],bytes[])": FunctionFragment;
-    "runSimple(address[],bytes[],address,uint256)": FunctionFragment;
   };
 
   encodeFunctionData(
-    functionFragment: "getPairReserves",
-    values: [string, string[], string[]]
+    functionFragment: "getReserves",
+    values: [string[]]
   ): string;
+  encodeFunctionData(functionFragment: "myOwner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "run",
     values: [string[], BytesLike[]]
   ): string;
-  encodeFunctionData(
-    functionFragment: "runSimple",
-    values: [string[], BytesLike[], string, BigNumberish]
-  ): string;
 
   decodeFunctionResult(
-    functionFragment: "getPairReserves",
+    functionFragment: "getReserves",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "myOwner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "run", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "runSimple", data: BytesLike): Result;
 
   events: {};
 }
@@ -93,54 +90,26 @@ export class ExchangeExtractorV4 extends BaseContract {
   interface: ExchangeExtractorV4Interface;
 
   functions: {
-    getPairReserves(
-      router: string,
-      tokanAs: string[],
-      tokenBs: string[],
+    getReserves(
+      pairs: string[],
       overrides?: CallOverrides
-    ): Promise<
-      [
-        ([string, string, BigNumber, BigNumber] & {
-          token1: string;
-          token2: string;
-          reserve1: BigNumber;
-          reserve2: BigNumber;
-        })[],
-        string
-      ]
-    >;
+    ): Promise<[string[], BigNumber[], BigNumber[]]>;
+
+    myOwner(overrides?: CallOverrides): Promise<[string]>;
 
     run(
       addresses: string[],
       datas: BytesLike[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
-
-    runSimple(
-      addresses: string[],
-      datas: BytesLike[],
-      token: string,
-      amountIn: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
   };
 
-  getPairReserves(
-    router: string,
-    tokanAs: string[],
-    tokenBs: string[],
+  getReserves(
+    pairs: string[],
     overrides?: CallOverrides
-  ): Promise<
-    [
-      ([string, string, BigNumber, BigNumber] & {
-        token1: string;
-        token2: string;
-        reserve1: BigNumber;
-        reserve2: BigNumber;
-      })[],
-      string
-    ]
-  >;
+  ): Promise<[string[], BigNumber[], BigNumber[]]>;
+
+  myOwner(overrides?: CallOverrides): Promise<string>;
 
   run(
     addresses: string[],
@@ -148,43 +117,17 @@ export class ExchangeExtractorV4 extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  runSimple(
-    addresses: string[],
-    datas: BytesLike[],
-    token: string,
-    amountIn: BigNumberish,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   callStatic: {
-    getPairReserves(
-      router: string,
-      tokanAs: string[],
-      tokenBs: string[],
+    getReserves(
+      pairs: string[],
       overrides?: CallOverrides
-    ): Promise<
-      [
-        ([string, string, BigNumber, BigNumber] & {
-          token1: string;
-          token2: string;
-          reserve1: BigNumber;
-          reserve2: BigNumber;
-        })[],
-        string
-      ]
-    >;
+    ): Promise<[string[], BigNumber[], BigNumber[]]>;
+
+    myOwner(overrides?: CallOverrides): Promise<string>;
 
     run(
       addresses: string[],
       datas: BytesLike[],
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    runSimple(
-      addresses: string[],
-      datas: BytesLike[],
-      token: string,
-      amountIn: BigNumberish,
       overrides?: CallOverrides
     ): Promise<void>;
   };
@@ -192,47 +135,28 @@ export class ExchangeExtractorV4 extends BaseContract {
   filters: {};
 
   estimateGas: {
-    getPairReserves(
-      router: string,
-      tokanAs: string[],
-      tokenBs: string[],
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
+    getReserves(pairs: string[], overrides?: CallOverrides): Promise<BigNumber>;
+
+    myOwner(overrides?: CallOverrides): Promise<BigNumber>;
 
     run(
       addresses: string[],
       datas: BytesLike[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    runSimple(
-      addresses: string[],
-      datas: BytesLike[],
-      token: string,
-      amountIn: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
   };
 
   populateTransaction: {
-    getPairReserves(
-      router: string,
-      tokanAs: string[],
-      tokenBs: string[],
+    getReserves(
+      pairs: string[],
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
+
+    myOwner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     run(
       addresses: string[],
       datas: BytesLike[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    runSimple(
-      addresses: string[],
-      datas: BytesLike[],
-      token: string,
-      amountIn: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
   };

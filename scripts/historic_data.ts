@@ -1,27 +1,28 @@
 import fs, { read } from "fs"
 import { PairInfo, Path, Token } from "./models/pairInfo"
 import IUniswapV2Router02Artifacts from '../artifacts/contracts/ExchangeExtractorV4.sol/IUniswapV2Router02.json'
-import { ethers } from "hardhat"
+import { ethers, network } from "hardhat"
 import { ExchangeExtractorV4__factory } from "../typechain/factories/ExchangeExtractorV4__factory"
 import { ExchangeExtractor } from "../tokens/ExchangeExtractor"
 import { BigNumber } from "ethers"
 import { BaseAssets } from "../tokens/BaseAssets"
 import { NetworkInfo } from "./models/networkInfo"
 import { CycleInfo } from "./models/cycleInfo"
-import { IERC20__factory, IUniswapV2Router02__factory } from "../typechain"
+import { IERC20__factory, IUniswapV2Router02__factory, UniswapV2Router02__factory } from "../typechain"
 import { GasPrice, getNetworkGasPrice } from "@enzoferey/network-gas-price"
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle"
 import { Dexes } from "../tokens/Dexes"
 import { getGweiEthers } from "./helpers"
 import { amountIn, blackListedTokens, initialToken, tokensWithTransactionAbove } from "./constants"
 import { Action } from "./models/actions"
+import { fetchGasData } from "./gas_price_oracle"
 
 const exchangesCount = 2
 const tokensInCycle = 5
 
 const shouldParse = false
 const shouldApproveExchangeExtractorToTokens = false
-const shouldRegenerateCycles = false
+const shouldRegenerateCycles = true
 
 const enablePrint = true
 
@@ -33,17 +34,30 @@ console.log = (...any) => {
     }
 }
 
+const writeToFile = (n: string) => {
+    const now = new Date()
+    // Convert to UTC+2
+    const utcPlusTwo = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+    const data = `${utcPlusTwo.toISOString()}| ${n}\n`
+    fs.appendFile('./out/scan.txt', data, (err) => {
+        if (err) {
+            console.error('Error writing to file', err)
+        } else {
+            console.log('Wrote to file:', data.trim())
+        }
+    })
+}
 
 // let ArbitrageBotV4: ExchangeExtractorV4
 const IUniswapV2Router02 = new ethers.utils.Interface(IUniswapV2Router02__factory.abi)
 const readHistoricExchangesTransactions = async (): Promise<string[]> => {
     try {
         const paths = await fs.promises.readFile(
-            'exchanges/sushiswap_uniswap_since_2023.csv',
+            'exchanges/data.csv',
             { encoding: 'utf-8' }
         )
 
-        return paths.split('\r\n')
+        return paths.split('\n')
     } catch (e) {
         console.log("Error occured:")
         console.log(e)
@@ -54,16 +68,23 @@ const readHistoricExchangesTransactions = async (): Promise<string[]> => {
 
 const parseTransactionData = (row: string): Pair | null => {
     try {
+        // console.log(row)
         const entries = row.split(',')
         const data = entries[0]
         const dex = entries[1]
-        const decodedArgs = IUniswapV2Router02.decodeFunctionData(data.slice(0, 10), data)
-        const path = {
-            from: decodedArgs.path[0],
-            to: decodedArgs.path[1]
-        }
+        // console.log(dex)
+        if (["0x8803dbee", "0x38ed1739"].indexOf(data.slice(0, 10)) != -1) {
+            // console.log("In")
+            const decodedArgs = IUniswapV2Router02.decodeFunctionData(data.slice(0, 10), data)
+            const path = {
+                from: decodedArgs.path[0],
+                to: decodedArgs.path[1]
+            }
 
-        return new Pair(path.from, path.to, dex)
+            return new Pair(path.from, path.to, dex)
+        } else {
+            return null
+        }
     } catch (e) {
         console.log(row.split(',')[0].slice(0, 10))
         console.log(e)
@@ -103,38 +124,44 @@ interface PairsWithReserves {
 const constructPairInfoWithReservers = async (exchangePairs: any): Promise<[BigNumber, boolean, CycleInfo][]> => {
     var time1 = new Date().getTime()
     const [deployer] = await ethers.getSigners()
-    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach("0xc9daAb52Bf1fBBA3b0Ec59F919345644581Ce931")
+    const exchangeExtractor = new ExchangeExtractorV4__factory(deployer).attach(ExchangeExtractor)
     console.log(5)
 
     const reserveMap: any = {}
     const pairsMap: any = {}
     const result: PairInfo[][] = await Promise.all(Object.keys(exchangePairs).map(async exchange => {
+        console.log(exchange)
         const tokens1s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token1)
         const tokens2s: string[] = exchangePairs[exchange].map((pair: Pair) => pair.token2)
 
-        const pairData = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
+        try {
+            const pairData = await exchangeExtractor.getPairReserves(exchange, tokens1s, tokens2s)
+            return pairData[0].map<PairInfo>(([token1, token2, reserve1, reserve2]) => {
+                /// Shadow sorting of token1 & token2 
+                const pairInfo = new PairInfo({
+                    token1: new Token(token1, 18),
+                    token2: new Token(token2, 18),
+                    dex: pairData[1],
+                })
 
-        return pairData[0].map<PairInfo>(([token1, token2, reserve1, reserve2]) => {            
-            /// Shadow sorting of token1 & token2 
-            const pairInfo = new PairInfo({
-                token1: new Token(token1, 18),
-                token2: new Token(token2, 18),
-                dex: pairData[1],
+                // if (token1 == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" && token2 == "0xc2132D05D31c914a87C6611C10748AEb04B58e8F") {
+                //     console.log(`${token1} ${token2} ${exchange}`)
+                //     console.log([reserve1, reserve2])
+
+                //     console.log(`${pairInfo.token1.address} ${pairInfo.token2.address} ${pairInfo.dex}`)
+                //     console.log([reserve1, reserve2])
+                // }
+
+                pairsMap[pairInfo.name] = pairInfo
+                reserveMap[pairInfo.name] = [reserve1, reserve2]
+
+                return pairInfo
             })
+        } catch (e) {
+            console.log(e)
+            return {} as any
+        }
 
-            // if (token1 == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" && token2 == "0xc2132D05D31c914a87C6611C10748AEb04B58e8F") {
-            //     console.log(`${token1} ${token2} ${exchange}`)
-            //     console.log([reserve1, reserve2])
-
-            //     console.log(`${pairInfo.token1.address} ${pairInfo.token2.address} ${pairInfo.dex}`)
-            //     console.log([reserve1, reserve2])
-            // }
-
-            pairsMap[pairInfo.name] = pairInfo
-            reserveMap[pairInfo.name] = [reserve1, reserve2]
-
-            return pairInfo
-        })
     }))
     PairInfo.reserves = reserveMap
     PairInfo.pairs = pairsMap
@@ -335,6 +362,7 @@ const main = async () => {
     // console.log(result.map(([a, b, cycle]) => a))
     console.log("Filtered cycles:", result.length)
     console.log(result.slice(0, 20).map(([i]) => i))
+    writeToFile(`${result.length}, in: ${amountIn}, out: ${result.map(c => c[0])}`)
     if (result.length > 0) {
 
         // GIVE APPROVAL TO THE EXCHANGE EXTRACTORA
@@ -457,34 +485,61 @@ const main = async () => {
         // console.log(transferBackAmount)
         var time2 = new Date().getTime()
         console.log(`Elapsed time: ${time2.valueOf() - time1.valueOf()}`)
-        return
+        // return
+        if (false) {
+            try {
+                const [deployer] = await ethers.getSigners()
 
-        try {
-            const tnx = await exchangeExtractor.runSimple(
-                addresses,
-                datas,
-                initialToken.address,
-                amountIn,
-                {
-                    gasLimit: 3000000,
-                    // gasPrice: 30000096308436836
-                    maxPriorityFeePerGas: getGweiEthers(
-                        networkGasPrice.low.maxPriorityFeePerGas
-                    ),
-                    maxFeePerGas: getGweiEthers(networkGasPrice.low.maxFeePerGas),
+                const nonce = await deployer.getTransactionCount()
+                const gasPriceR = await fetchGasData()
+                let gasPrice
+                if (gasPriceR.data?.rapidgaspricegwei != undefined) {
+                    gasPrice = gasPriceR.data?.rapidgaspricegwei ?? 0
+                } else {
+                    throw "Can't fetch gas"
                 }
-            )
-            log(tnx.hash)
-            log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
+
+                const tnx = await deployer.sendTransaction({
+                    to: addresses[0],
+                    data: datas[0],
+                    nonce: nonce,
+                    gasPrice: gasPrice,
+                    gasLimit: 1000000
+                })
+
+                console.log(datas)
+                if (false) {
+                    const tnx = await exchangeExtractor.runSimple(
+                        addresses,
+                        datas,
+                        initialToken.address,
+                        amountIn,
+                        {
+                            nonce,
+                            gasLimit: 3000000,
+                            gasPrice: 250130617444
+                            // maxPriorityFeePerGas: getGweiEthers(
+                            //     networkGasPrice.high.maxPriorityFeePerGas
+                            // ),
+                            // maxFeePerGas: getGweiEthers(networkGasPrice.high.maxFeePerGas),
+                        }
+                    )
+                }
+
+                log(tnx.hash)
+                log(`Transaction submited in ${await deployer.provider?.getBlockNumber()}`)
 
 
-            await tnx.wait().catch(() => log("FAILED!"))
-            log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
-        } catch (e) {
-            log(e)
+                await tnx.wait().catch(() => log("FAILED!"))
+                log(`Transaction included in ${await deployer.provider?.getBlockNumber()}`)
+            } catch (e) {
+                log(e)
+            }
         }
     }
 }
 
 export const CheckForArbitrage = async () => await main()
 main().catch(log)
+
+// setInterval(main, 10000);

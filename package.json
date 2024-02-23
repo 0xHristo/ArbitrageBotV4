@@ -38,6 +38,9 @@
   "dependencies": {
     "@enzoferey/network-gas-price": "^0.3.4",
     "@flashbots/ethers-provider-bundle": "^0.6.1",
+    "@uniswap/sdk-core": "^4.0.10",
+    "@uniswap/v3-sdk": "^3.10.2",
+    "bignumber.js": "^9.1.2",
     "body-parser": "^1.20.2",
     "fs": "^0.0.1-security",
     "isomorphic-unfetch": "^4.0.2"

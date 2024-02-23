@@ -15,6 +15,8 @@ import "@nomiclabs/hardhat-waffle";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 
+import "./scripts/GasAwareSignerPlugin"
+
 const chainIds = {
   ["polygon-mumbai"]: 80001,
   ["polygon-mainnet"]: 137,
@@ -59,7 +61,11 @@ const config: HardhatUserConfig = {
       chainId: chainIds.hardhat,
     },
     polygon_mumbai: createTestnetConfig("polygon-mumbai"),
-    polygon_mainnet: createTestnetConfig("polygon-mainnet")
+    polygon_mainnet: createTestnetConfig("polygon-mainnet"),
+    avalanche_mainnet: {
+      accounts: [PRIVATE_KEY],
+      url: "https://fittest-young-county.avalanche-mainnet.quiknode.pro/f6f7b4115bf91b29f59d506a4cc5e01dcb0a0d04/ext/bc/C/rpc/"
+    }
   },
   solidity: {
     settings: {

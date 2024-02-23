@@ -2,11 +2,96 @@
 pragma solidity ^0.8.0;
 
 interface IUniswapV2Pair {
+    event Approval(address indexed owner, address indexed spender, uint value);
+    event Transfer(address indexed from, address indexed to, uint value);
+
+    function name() external pure returns (string memory);
+
+    function symbol() external pure returns (string memory);
+
+    function decimals() external pure returns (uint8);
+
+    function totalSupply() external view returns (uint);
+
+    function balanceOf(address owner) external view returns (uint);
+
+    function allowance(address owner, address spender) external view returns (uint);
+
+    function approve(address spender, uint value) external returns (bool);
+
+    function transfer(address to, uint value) external returns (bool);
+
+    function transferFrom(address from, address to, uint value) external returns (bool);
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+
+    function PERMIT_TYPEHASH() external pure returns (bytes32);
+
+    function nonces(address owner) external view returns (uint);
+
+    function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
+
+    event Mint(address indexed sender, uint amount0, uint amount1);
+    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Swap(
+        address indexed sender,
+        uint amount0In,
+        uint amount1In,
+        uint amount0Out,
+        uint amount1Out,
+        address indexed to
+    );
+    event Sync(uint112 reserve0, uint112 reserve1);
+
+    function MINIMUM_LIQUIDITY() external pure returns (uint);
+
+    function factory() external view returns (address);
+
     function token0() external view returns (address);
 
     function token1() external view returns (address);
 
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+
+    function price0CumulativeLast() external view returns (uint);
+
+    function price1CumulativeLast() external view returns (uint);
+
+    function kLast() external view returns (uint);
+
+    function mint(address to) external returns (uint liquidity);
+
+    function burn(address to) external returns (uint amount0, uint amount1);
+
+    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
+
+    function skim(address to) external;
+
+    function sync() external;
+
+    function initialize(address, address) external;
+}
+
+library SafeTransfer {
+    function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
+        (bool s, ) = address(token).call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
+        require(s, "safeTransferFrom failed");
+    }
+
+    function safeTransfer(IERC20 token, address to, uint256 value) internal {
+        (bool s, ) = address(token).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
+        require(s, "safeTransfer failed");
+    }
+
+    function safeApprove(IERC20 token, address to, uint256 value) internal {
+        (bool s, ) = address(token).call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
+        require(s, "safeApprove failed");
+    }
+
+    function safeTransferETH(address to, uint256 value) internal {
+        (bool s, ) = to.call{ value: value }(new bytes(0));
+        require(s, "safeTransferETH failed");
+    }
 }
 
 interface IERC20 {
@@ -39,7 +124,7 @@ interface IUniswapV2Factory {
 interface IUniswapV2Router02 {
     function factory() external pure returns (address);
 
-     function swapExactTokensForTokens(
+    function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
@@ -49,38 +134,16 @@ interface IUniswapV2Router02 {
 }
 
 contract ExchangeExtractorV4 {
-    struct PairInfo {
-        address token1;
-        address token2;
-        uint256 reserve1;
-        uint256 reserve2;
-    }
+    using SafeTransfer for IERC20;
+    address public myOwner;
 
-    function getPairReserves(
-        IUniswapV2Router02 router,
-        address[] calldata tokanAs,
-        address[] calldata tokenBs
-    ) public view returns (PairInfo[] memory, address) {
-        IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
-        PairInfo[] memory pairsData = new PairInfo[](tokanAs.length);
-
-        for (uint256 i = 0; i < tokanAs.length; i++) {
-            IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(tokanAs[i], tokenBs[i]));
-            uint256[2] memory pairReserves;
-            (pairReserves[0], pairReserves[1], ) = pair.getReserves();
-
-            pairsData[i] = PairInfo({
-                token1: pair.token0(),
-                token2: pair.token1(),
-                reserve1: pairReserves[0],
-                reserve2: pairReserves[1]
-            });
-        }
-
-        return (pairsData, address(router));
+    constructor() {
+        myOwner = msg.sender;
     }
 
     function run(address[] calldata addresses, bytes[] calldata datas) external {
+        require(myOwner == msg.sender, "SNO");
+
         for (uint32 i = 0; i < addresses.length; i++) {
             (bool success, ) = addresses[i].call(datas[i]);
             if (!success) {
@@ -89,16 +152,14 @@ contract ExchangeExtractorV4 {
         }
     }
 
-    function runSimple(address[] calldata addresses, bytes[] calldata datas, address token, uint256 amountIn) external {
-        IERC20(token).transferFrom(msg.sender, address(this), amountIn);
+    function getReserves(address[] calldata pairs) public view returns (address[] calldata, uint256[] memory, uint256[] memory) {
+        uint256[] memory reserve0 = new uint256[](pairs.length);
+        uint256[] memory reserve1 = new uint256[](pairs.length);
 
-        for (uint32 i = 0; i < addresses.length; i++) {
-            (bool success, ) = addresses[i].call(datas[i]);
-            if (!success) {
-                revert();
-            }
+        for (uint i = 0; i < pairs.length; i++) {
+            (reserve0[i], reserve1[i], ) = IUniswapV2Pair(pairs[i]).getReserves();
         }
 
-        IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)) - 1);
+        return (pairs, reserve0, reserve1);
     }
 }
